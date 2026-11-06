@@ -20,7 +20,7 @@ The parent answers in their own words on WhatsApp, and the family sees those exa
 
 ## Operating Context
 
-CareCircle is a course team project at the prototype stage, being usability-tested with real people; it has no paying customers (confirmed in init). The source of truth for the app is the Figma Make file `gzx3ZBweyXOXX2oS1DLcDm`, published at carecircle-iimb.figma.site, with a Supabase backend (project `ksnmbtlicmmzfwhwcicv`, edge function `make-server-e043d7e3`). The local folder copy of the code is older than the Figma copy. Typical use is in India: families coordinate over WhatsApp, and the parent's language is English or Hindi.
+CareCircle is a course team project at the prototype stage, being usability-tested with real people; it has no paying customers (confirmed in init). The source of truth for the app is the GitHub repo `yuvraj30/carecircle` (moved from Figma Make on 2026-11-06; the Figma Make file `gzx3ZBweyXOXX2oS1DLcDm` is now an archive). It is live at carecircle-iimb.vercel.app, with a Supabase backend (project `ksnmbtlicmmzfwhwcicv`, edge function `make-server-e043d7e3`). Several team members change it through pull requests, often with Claude Code. Typical use is in India: families coordinate over WhatsApp, and the parent's language is English or Hindi.
 
 ## Capabilities and Constraints
 
