@@ -62,9 +62,10 @@ async function call(method, route, user, params = {}, body = {}) {
   const oldToken = 'secret-old-token'
   records.set(`invite:${oldToken}`, { token: oldToken, circleId, email: 'helper@example.com', status: 'Pending', expiresAt: '2099-01-01T00:00:00Z' })
   records.set(`circle:${circleId}:members`, [
-    { id: 'coordinator', userId: 'coordinator', email: 'coordinator@example.com', status: 'Active', role: 'coordinator' },
+    { id: 'coordinator', userId: 'coordinator', name: 'Priya', email: 'coordinator@example.com', status: 'Active', role: 'coordinator' },
     { id: `invite-${oldToken}`, inviteToken: oldToken, email: 'helper@example.com', status: 'Invited' },
   ])
+  records.set(`circle:${circleId}:meta`, { id: circleId, name: 'Our family circle' })
   const coordinator = await call('GET', '/circles/:circleId/snapshot', 'coordinator', { circleId })
   assert.equal(coordinator.body.members[1].inviteToken, oldToken)
   for (const user of ['caregiver', 'viewer']) {
@@ -80,8 +81,22 @@ async function call(method, route, user, params = {}, body = {}) {
   const oldAccept = await call('POST', '/invites/:token/accept', 'helper', { token: oldToken })
   assert.equal(oldAccept.status, 409)
   const newToken = replacement.body.shareablePath.slice('/invite/'.length)
+  const anonymous = await call('GET', '/invites/:token', 'anonymous', { token: newToken })
+  assert.deepEqual(anonymous.body, { state: 'sign-in' })
+  const wrongAccount = await call('GET', '/invites/:token', 'viewer', { token: newToken })
+  assert.deepEqual(wrongAccount.body, { state: 'wrong-account' })
+  const intendedRecipient = await call('GET', '/invites/:token', 'helper', { token: newToken })
+  assert.deepEqual(intendedRecipient.body, { state: 'verified', circleName: 'Our family circle', inviterName: 'Priya', activeMemberCount: 1, role: 'caregiver' })
+  assert.equal(JSON.stringify(intendedRecipient.body).includes('helper@example.com'), false)
+  const replaced = await call('GET', '/invites/:token', 'helper', { token: oldToken })
+  assert.deepEqual(replaced.body, { state: 'unavailable' })
+  const storedInvite = records.get(`invite:${newToken}`)
+  records.set(`invite:${newToken}`, { ...storedInvite, expiresAt: '2000-01-01T00:00:00Z' })
+  assert.deepEqual((await call('GET', '/invites/:token', 'helper', { token: newToken })).body, { state: 'expired' })
+  records.set(`invite:${newToken}`, storedInvite)
   const newAccept = await call('POST', '/invites/:token/accept', 'helper', { token: newToken })
   assert.equal(newAccept.status, 200)
+  assert.deepEqual((await call('GET', '/invites/:token', 'helper', { token: newToken })).body, { state: 'unavailable' })
   assert.equal(records.get(`membership:helper:${circleId}`).status, 'Active')
   const duplicateAfterAccept = await call('POST', '/circles/:circleId/invites', 'coordinator', { circleId }, { email: 'helper@example.com' })
   assert.equal(duplicateAfterAccept.status, 409)

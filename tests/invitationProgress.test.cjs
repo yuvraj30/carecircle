@@ -17,11 +17,13 @@ const render = options => renderToStaticMarkup(React.createElement(InvitationPro
 
 const coordinator = render({})
 assert.match(coordinator, /Copy invitation link/)
+assert.match(coordinator, /Copy visit-prep invitation/)
 assert.match(coordinator, /Open WhatsApp/)
 assert.match(coordinator, /only after signing in and accepting/)
 assert.doesNotMatch(coordinator, /Invitation sent/)
 const caregiver = render({ canManage: false })
 assert.doesNotMatch(caregiver, /private-token|Copy invitation link|Open WhatsApp/)
+assert.doesNotMatch(caregiver, /Copy visit-prep invitation/)
 assert.match(caregiver, /Check status/)
 const sample = render({ sample: true })
 assert.doesNotMatch(sample, /private-token|Open WhatsApp/)

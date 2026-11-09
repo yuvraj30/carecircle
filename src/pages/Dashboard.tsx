@@ -14,6 +14,8 @@ import { CareJourney } from '../components/CareJourney'
 import { useGuidedTourActive } from '../components/GuidedTour'
 import { recordProductEvent } from '../lib/productMeasurement'
 import { clockLabel as fmt12h, clockOf, dayAndClock, lateBy } from '../lib/time'
+import { medicationOwner } from '../lib/medicationOwner'
+import { SymptomFollowup } from '../components/SymptomFollowup'
 function dueLabel(value: string) {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? value || 'No due date' : dayAndClock(date)
@@ -99,8 +101,9 @@ export function Dashboard() {
   const count = openTasks.length + followups.length
   const nextAppt = appointments.filter(item => (!item.patientId || item.patientId === activePatientId) && ['Upcoming', 'Confirmed'].includes(item.status) && Date.parse(item.datetime) >= time.getTime()).sort((a, b) => Date.parse(a.datetime) - Date.parse(b.datetime))[0]
   const events = state.careEvents.filter(event => event.patientId === activePatientId).sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
-  const firstReply = [...events].reverse().find(event => event.kind === 'parent_replied' && event.alertId)
-  const replyAlert = alerts.find(alert => alert.id === firstReply?.alertId)
+  const recordedReplies = events.filter(event => event.kind === 'parent_replied' && event.alertId)
+  const latestReply = recordedReplies[0]
+  const replyAlert = alerts.find(alert => alert.id === latestReply?.alertId)
   const memberFor = (id?: string) => state.members.find(member => (member.userId ?? member.id) === id)
   const activeMeds = medications.filter(medicine => medicine.status !== 'Stopped' && (!medicine.patientId || medicine.patientId === activePatientId)).sort((a, b) => a.scheduleTime.localeCompare(b.scheduleTime))
   // Order by urgency: every dose follow-up first (earliest, so most overdue, first), then tasks with
@@ -151,6 +154,7 @@ export function Dashboard() {
       <div className="cc-calm-hero-person"><span className="cc-avatar cc-avatar-large">{patient?.initials || 'CC'}</span><span><small>CARING FOR</small><strong>{patient?.name || 'Choose a patient'}</strong><span>{state.circleName}</span></span></div>
     </header>
     {patient?.parentChannel.reminders.status === 'Withdrawn' && <div className="cc-consent-note"><b>{patient.parentChannel.preferredName} asked to stop reminders.</b><p>Reminder messages are paused. A coordinator may send a new consent message.</p></div>}
+    <SymptomFollowup />
     <div className="cc-calm-main-grid">
       <section className="cc-calm-attention" aria-labelledby="attention-heading">
         <div className="cc-calm-section-heading"><div><span className="cc-calm-kicker">YOUR CARE OVERVIEW</span><h2 id="attention-heading">Care to review</h2><p>{count ? `${count} ${count === 1 ? 'item' : 'items'} on your list` : 'Your list is clear for now'}</p></div><button className="cc-calm-text-link" type="button" onClick={() => actions.setView('tasks')}>All tasks <span aria-hidden="true">↗</span></button></div>
@@ -173,7 +177,7 @@ export function Dashboard() {
       <aside className="cc-calm-next" aria-labelledby="next-visit-heading"><div className="cc-calm-next-icon" aria-hidden="true"><CalendarIcon className="w-6 h-6" /></div><span className="cc-calm-kicker">A LITTLE AHEAD</span><h2 id="next-visit-heading">Next visit</h2>{nextAppt ? <><p className="cc-calm-date">{new Date(nextAppt.datetime).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</p><h3>{nextAppt.type}</h3><p>{clockOf(new Date(nextAppt.datetime))}{nextAppt.location || nextAppt.doctor ? ` · ${nextAppt.location || nextAppt.doctor}` : ''}</p><button type="button" className="cc-calm-next-action" onClick={openAppointment}>Prepare for visit <span aria-hidden="true">↗</span></button></> : <><p className="cc-calm-next-empty">No upcoming visit on the calendar.</p><button type="button" className="cc-calm-next-action" onClick={() => actions.setView('appointments')}>View visits <span aria-hidden="true">↗</span></button></>}</aside>
     </div>
     {state.isSample && <details className="cc-sample-tip"><summary>New here? Try the care loop</summary><p>Open the simulated parent phone, send a reply, then return to Today to see the change. Nothing is sent or saved.</p><Button variant="secondary" onClick={() => actions.togglePhonePane(true)}>Open parent phone</Button></details>}
-    {firstReply?.rawText && patient && canMemberSeeParentReplies(patient, state.currentUser?.id) && !state.dismissedFirstReplyPatientIds.includes(patient.id) && <Card className="cc-first-reply"><div><strong>{patient.parentChannel.preferredName} replied for the first time</strong><p>“{firstReply.rawText}” · {replyAlert?.medicationName ?? 'Medicine reminder'} · {shortTime(firstReply.at)}</p></div><Button variant="ghost" onClick={() => actions.dismissFirstReply(patient.id)}>Dismiss</Button></Card>}
+    {latestReply?.rawText && patient && canMemberSeeParentReplies(patient, state.currentUser?.id) && !state.dismissedFirstReplyPatientIds.includes(patient.id) && <Card className="cc-first-reply"><div><strong>{recordedReplies.length === 1 ? `${patient.parentChannel.preferredName} replied for the first time` : `Latest from ${patient.parentChannel.preferredName}`}</strong><p>“{latestReply.rawText}” · {replyAlert?.medicationName ?? 'Medicine reminder'} · {shortTime(latestReply.at)}</p></div><Button variant="ghost" onClick={() => actions.dismissFirstReply(patient.id)}>Dismiss</Button></Card>}
     {nudge && <section ref={nudgeRef} className="cc-insight cc-dash-nudge" aria-label="Suggested next step"><div className="cc-insight-icon" aria-hidden="true"><ClockIcon className="w-5 h-5" /></div><div className="cc-insight-copy"><span className="cc-kicker">SUGGESTED FOR YOUR CIRCLE</span><h2>{nudge.title}</h2><p>{nudge.detail}</p><div className="cc-insight-actions">{nudge.primaryLabel && <Button onClick={() => { recordProductEvent(state.currentUser?.id, state.isSample, 'nudge_accepted'); if (nudge.action === 'resend-consent' && patient) actions.sendParentConsent(patient.id); else if (nudge.view) actions.setView(nudge.view) }}>{nudge.primaryLabel}</Button>}<Button variant="ghost" onClick={() => dismiss(nudge.id)}>{nudge.secondaryLabel}</Button></div></div></section>}
     <CareJourney suppressSuggestion={Boolean(nudge) || isNudgeCooldownActive(state, time)} />
     <details className="cc-calm-details"><summary>More care details <span aria-hidden="true">+</span></summary><div className="cc-calm-details-content">
@@ -185,7 +189,7 @@ export function Dashboard() {
           <div className="cc-table-scroll"><table className="cc-care-table"><thead><tr><th>Activity</th><th>Responsible</th><th>Due</th><th>Status</th><th><span className="sr-only">Action</span></th></tr></thead><tbody>
             {planMeds.map(medicine => {
               const alert = todayAlerts.find(item => item.medicationId === medicine.id)
-              const owner = memberFor(alert?.confirmedBy || alert?.assignedTo || patient?.primaryCaregiverId)
+              const owner = medicationOwner(alert, patient, state.members)
               return <tr key={'medicine-' + medicine.id}><td><div className="cc-activity"><span className="cc-icon-tile"><PillIcon className="w-5 h-5" /></span><div><strong>{medicine.name}</strong><span>Medicine schedule</span></div></div></td><td><div className="cc-table-owner">{owner && <span className="cc-avatar cc-avatar-small">{owner.initials}</span>}{owner?.name || 'Unassigned'}</div></td><td>{fmt12h(medicine.scheduleTime)}<span className="cc-secondary-line">Today</span></td><td>{alert ? <AlertSourceStatus alert={alert} /> : <span className="cc-status cc-status-neutral">No reminder sent</span>}</td><td><button className="cc-row-action" aria-label={'View ' + medicine.name} onClick={() => alert ? actions.openAlertDetail(alert.id) : actions.setView('medicines')}><ChevronRightIcon className="w-4 h-4" /></button></td></tr>
             })}
             {planTasks.map(task => {

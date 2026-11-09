@@ -89,6 +89,6 @@ export function eventTextForMember(event: CareEvent, patient: Patient | undefine
     if (/^reminder sent\b/i.test(event.text)) return event.text.replace(/^reminder sent\b/i, 'Simulated reminder')
     return `Simulated: ${event.text}`
   }
-  if (event.kind !== 'parent_replied' || canMemberSeeParentReplies(patient, memberId)) return event.text
+  if ((event.kind !== 'parent_replied' && event.kind !== 'reply_interpreted') || canMemberSeeParentReplies(patient, memberId)) return event.text
   return `Waiting for ${patient?.parentChannel.preferredName ?? 'the parent'} to agree to share with you`
 }

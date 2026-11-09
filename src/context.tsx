@@ -6,6 +6,7 @@ import type {
 } from './types'
 import { api, ApiError, supabase } from './lib/supabase'
 import { acknowledgementFor, classifyParentConsentReply, classifyParentReply } from './constants/replyClassifier'
+import { replyAlertId } from './lib/personReplies'
 import { BUILT_IN_MEDICINE_PHOTOS } from './lib/medicinePhotos'
 import { buildWeeklyDigest, mostRecentDigestDelivery, nextSundayAtSix } from './lib/weeklyDigest'
 import { parentConsentMessages } from './constants/parentConsent'
@@ -1386,7 +1387,7 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
         return
       }
       const replyCategory = isMemberSharingReply ? 'other' : classifyParentReply(exactReply)
-      const effectiveAlertId = isMemberSharingReply ? undefined : alertId
+      const effectiveAlertId = replyAlertId(replyCategory, alertId, isMemberSharingReply)
       const confirmsDose = replyCategory === 'taken' && Boolean(alert) && !isMemberSharingReply
       const wasConfirmed = alert?.status === 'Confirmed'
       const alerts = confirmsDose
@@ -1567,7 +1568,7 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
       if (current.activeCircleRole === 'view-only') return
       const source = current.careEvents.find(event =>
         event.id === eventId &&
-        (event.kind === 'family_confirmed' || event.kind === 'claimed') &&
+        ['family_confirmed', 'claimed', 'task_completed', 'refill_done'].includes(event.kind) &&
         event.actorType === 'member' &&
         event.actorId !== current.currentUser?.id
       )
@@ -1580,6 +1581,8 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
         kind: 'thanks_sent',
         patientId: source.patientId,
         alertId: source.alertId,
+        taskId: source.taskId,
+        medicationId: source.medicationId,
         relatedEventId: source.id,
         actorType: 'member',
         actorId: current.currentUser?.id ?? '',
@@ -1960,7 +1963,7 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
     takeTask(taskId) {
       const current = stateRef.current
       const task = current.tasks.find(item => item.id === taskId)
-      if (!task || task.assigneeId || current.activeCircleRole === 'view-only' || !current.currentUser) return
+      if (!task || task.status === 'Completed' || task.assigneeId || current.activeCircleRole === 'view-only' || !current.currentUser) return
       const timestamp = now().toISOString()
       const updated = { ...task, assigneeId: current.currentUser.id, response: 'Accepted' as const, respondedAt: timestamp, declineReason: undefined }
       const tasks = current.tasks.map(item => item.id === taskId ? updated : item)

@@ -1,11 +1,14 @@
 import '../secondary-consistency.css'
 import '../records-refresh.css'
+import '../digest-refine.css'
 import { useApp } from '../context'
 import { BellIcon } from '../components/icons'
 import { Button, Card, EmptyState, PageHeader } from '../components/ui'
-import { eventTextForMember } from '../lib/careEvents'
+import { canMemberSeeParentReplies, eventTextForMember } from '../lib/careEvents'
 import { eventTargetView, relevantCareEvents, unreadCareEvents } from '../lib/notifications'
-import { buildWeeklyDigest, joinNames, type WeeklyDigestData } from '../lib/weeklyDigest'
+import { buildWeeklyDigest, digestCareMoments, digestEvents, joinNames, nextDigestTask, type WeeklyDigestData } from '../lib/weeklyDigest'
+import { sharedGarden } from '../lib/sharedGarden'
+import { focusTask } from '../lib/taskNavigation'
 import { summarizeForVisit, templateSummary, type VisitFacts } from '../lib/assistant'
 import { useState, type ReactNode } from 'react'
 
@@ -21,7 +24,8 @@ export function Notifications() {
       {events.map(event => {
         const patient = state.patients.find(item => item.id === event.patientId)
         const read = readIds.has(event.id)
-        return <button key={event.id} onClick={() => { actions.markNotification(event.id); if (event.patientId !== state.activePatientId) actions.switchPatient(event.patientId); actions.setView(eventTargetView(event)) }} className={`cc-notice-row w-full flex items-start gap-4 p-5 border-b border-slate-100 text-left ${read ? '' : 'is-unread'}`}>
+        const personSymptom = event.kind === 'parent_replied' && event.replyCategory === 'felt_unwell' && !event.alertId && canMemberSeeParentReplies(patient, state.currentUser?.id)
+        return <button key={event.id} onClick={() => { actions.markNotification(event.id); if (event.patientId !== state.activePatientId) actions.switchPatient(event.patientId); actions.setView(personSymptom ? 'today' : eventTargetView(event)) }} className={`cc-notice-row w-full flex items-start gap-4 p-5 border-b border-slate-100 text-left ${read ? '' : 'is-unread'}`}>
           <BellIcon className="w-5 h-5 cc-secondary-link mt-0.5" />
           <span className="flex-1"><b className="text-sm text-slate-800">{eventTextForMember(event, patient, state.currentUser?.id)}</b><span className="block text-xs text-slate-400 mt-1">{new Date(event.at).toLocaleString('en-IN')}</span></span>
           <span className={read ? 'text-xs text-slate-500' : 'cc-unread'}>{read ? 'Read' : 'New'}</span>
@@ -42,11 +46,15 @@ export function Digest() {
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0]
   const patient = state.patients.find(item => item.id === state.activePatientId)
 
-  if (!digestEvent || patient?.parentChannel.sharing.status !== 'Agreed') {
+  if (!digestEvent || patient?.parentChannel.sharing.status !== 'Agreed' || !canMemberSeeParentReplies(patient, state.currentUser?.id)) {
     return <div className="space-y-6"><PageHeader title="Weekly digest" subtitle="Seven days of recorded Care Circle activity" /><EmptyState title="No weekly digest available." detail="A digest is generated only when reply sharing is agreed and the scheduled delivery time has passed." /></div>
   }
 
   const digest = buildWeeklyDigest(state, digestEvent)
+  const suggestedTask = nextDigestTask(state, state.activePatientId)
+  const moments = digestCareMoments(state, digestEvent)
+  const garden = sharedGarden(digestEvents(state, digestEvent), digestEvent.patientId, new Date(digestEvent.at))
+  const gardenMoments = [garden.hasHandoff && 'a task handoff', garden.hasCompletion && 'a completed task', garden.hasRefill && 'a refill', garden.hasCheckIn && 'a family update'].filter((item): item is string => Boolean(item))
   const recipients = (digestEvent.recipientIds ?? []).map(id => state.members.find(member => (member.userId ?? member.id) === id)?.name).filter((name): name is string => Boolean(name))
   const replyGapText = digest.replies === 0
     ? `No replies recorded this week.${digest.noReplyDays.length ? ` No replies recorded on ${joinNames(digest.noReplyDays)}.` : ''}`
@@ -58,8 +66,13 @@ export function Digest() {
     <PageHeader title={`${patient?.parentChannel.preferredName ?? 'Parent'}'s weekly digest`} subtitle={`Generated ${new Date(digestEvent.at).toLocaleString('en-IN')} · Shared with ${joinNames(recipients)}`} />
     <Card className="p-6 space-y-5">
       <div className="cc-digest-intro"><strong>What needs attention</strong><p>{state.tasks.filter(task => task.patientId === state.activePatientId && task.status !== 'Completed').length} open tasks · {state.tasks.filter(task => task.patientId === state.activePatientId && task.status !== 'Completed' && !task.assigneeId).length} without an owner</p><Button variant="secondary" onClick={() => actions.setView('tasks')}>Review open tasks</Button></div>
+      <div className="cc-digest-garden"><span aria-hidden="true">✳</span><p><strong>Your shared garden</strong>{gardenMoments.length ? ` · This week’s recorded care included ${joinNames(gardenMoments)}.` : ' · No garden actions were recorded in this digest.'} <small>Recorded activity only, never a measure of health.</small></p></div>
+      {suggestedTask && <section className="cc-digest-next" aria-labelledby="digest-next-heading">
+        <div><span className="cc-digest-eyebrow">ONE SMALL NEXT STEP · CURRENTLY OPEN</span><h2 id="digest-next-heading">{suggestedTask.title}</h2><p>{suggestedTask.description || 'This care task is waiting for someone in the circle.'}</p><small>Based on the current task list, which may have changed since this digest was created.</small></div>
+        <div className="cc-digest-next-actions">{state.activeCircleRole !== 'view-only' && <Button disabled={state.isLoading || Boolean(state.commitError) || !state.currentUser} onClick={() => actions.takeTask(suggestedTask.id)}>I'll take this</Button>}<Button variant="secondary" onClick={() => { focusTask(suggestedTask.id); actions.setView('tasks') }}>View task</Button></div>
+      </section>}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <DigestStat label="Reminders sent" value={digest.remindersSent} />
+        <DigestStat label="Simulated reminders" value={digest.remindersSent} />
         <DigestStat label={`Replies from ${patient?.parentChannel.preferredName ?? 'parent'}`} value={digest.replies} detail={`${digest.takenReplies} recorded as “taken”`} />
         <DigestStat label="Times with no reply yet" value={digest.noReplyYet} />
         <DigestStat label="Doses confirmed by family" value={digest.familyConfirmed} />
@@ -70,6 +83,12 @@ export function Digest() {
         {digest.quotedReplies.length ? digest.quotedReplies.map(reply => <p key={reply} className="text-sm text-slate-700">“{reply}”</p>) : <p className="text-sm text-slate-400">None recorded.</p>}
       </DigestSection>
       <DigestSection title="Tasks completed"><p className="text-sm text-slate-700">{digest.tasksCompleted}</p></DigestSection>
+      {moments.length > 0 && <section className="cc-digest-moments" aria-labelledby="digest-moments-heading"><div className="cc-digest-moments-head"><div><span className="cc-digest-eyebrow">LITTLE ACTS, TOGETHER</span><h2 id="digest-moments-heading">Care your circle shared</h2><p>Recorded moments from this digest, without scores or rankings.</p></div><span aria-hidden="true">✳</span></div><ul>{moments.map(moment => {
+        const thankable = ['claimed', 'family_confirmed', 'task_completed', 'refill_done'].includes(moment.kind) && Boolean(moment.actorId) && moment.actorId !== state.currentUser?.id
+        const thanked = state.careEvents.some(event => event.kind === 'thanks_sent' && event.relatedEventId === moment.id)
+        const name = state.members.find(member => (member.userId ?? member.id) === moment.actorId)?.name ?? 'a family member'
+        return <li key={moment.id}><div><p>{moment.text}</p><time dateTime={moment.at}>{new Date(moment.at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</time></div>{thankable && (thanked ? <span className="cc-digest-thanked">Thanked</span> : state.activeCircleRole !== 'view-only' && <button type="button" className="cc-digest-thank" disabled={state.isLoading || Boolean(state.commitError)} onClick={() => actions.thankCareEvent(moment.id)}>Thank {name}</button>)}</li>
+      })}</ul></section>}
       <DigestSection title="Refills">
         {digest.refillEvents.length ? digest.refillEvents.map(event => <p key={event.id} className="text-sm text-slate-700">{event.text}</p>) : <p className="text-sm text-slate-400">No refill activity recorded.</p>}
       </DigestSection>

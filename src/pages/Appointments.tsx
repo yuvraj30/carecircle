@@ -1,6 +1,8 @@
 import '../appointments-refresh.css'
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { useApp } from '../context'
+import { useGate } from '../auth/Gate'
 import { XMarkIcon, CalendarIcon, ClockIcon, PlusIcon } from '../components/icons'
 import type { Appointment } from '../types'
 import { Button, Dialog, Field, SelectField, TextAreaField } from '../components/ui'
@@ -38,6 +40,8 @@ const STATUS_STYLE: Record<Appointment['status'], { bg: string; text: string; la
 
 function ApptDetail({ appt, onClose, onEdit }: { appt: Appointment; onClose: () => void; onEdit: () => void }) {
   const { state, actions, now } = useApp()
+  const navigate = useNavigate()
+  const gate = useGate()
   const [visitNote, setVisitNote] = useState('')
   const [followUp, setFollowUp] = useState('')
   const style = STATUS_STYLE[appt.status]
@@ -90,7 +94,8 @@ function ApptDetail({ appt, onClose, onEdit }: { appt: Appointment; onClose: () 
             </div>
           ))}
 
-          <div className="cc-visit-guide"><strong>Prepare together</strong><p>Agree who will accompany the parent, arrange transport, and collect questions or records before the visit.</p><Button variant="secondary" onClick={() => { onClose(); actions.setView('tasks') }}>Review care tasks</Button></div>
+          <div className="cc-visit-guide"><strong>Prepare together</strong><p>Agree who will accompany the parent, arrange transport, and collect questions or records before the visit.</p><div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => { onClose(); actions.setView('tasks') }}>Review care tasks</Button>{state.activeCircleRole === 'coordinator' && ['Upcoming', 'Confirmed'].includes(appt.status) && <Button variant="ghost" onClick={() => gate.requireAccount(() => { onClose(); navigate('/circle?action=invite-member') }, 'invite-member')}>Invite someone to help prepare</Button>}</div></div>
+          {appt.status === 'Completed' && <div className="cc-visit-guide" role="status"><strong>Visit recorded as completed</strong><p>{appt.visitNotes?.length ? `${appt.visitNotes.length} ${appt.visitNotes.length === 1 ? 'note is' : 'notes are'} saved for your circle.` : 'Add a note below if there is an outcome or follow-up to share.'}</p></div>}
           {appt.notes && (
             <div className="pt-3">
               <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2">Notes</p>

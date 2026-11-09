@@ -6,10 +6,11 @@ const RULES: { category: ParentReplyCategory; phrases: string[] }[] = [
   { category: 'stop', phrases: ['stop', 'band karo', 'बंद करो'] },
   { category: 'pause', phrases: ['pause', 'ruko', 'not today', 'रुको', 'आज नहीं'] },
   { category: 'who', phrases: ['who', 'kaun dekhta hai', 'कौन देखता है'] },
+  // A mixed message about feeling unwell is never treated as a dose confirmation.
+  { category: 'felt_unwell', phrases: ['not feeling well', 'dizzy', 'chakkar', 'dard', 'pain', 'tabiyat', 'चक्कर', 'दर्द', 'तबियत'] },
   { category: 'not_taken', phrases: ['not taken', "didn't", 'did not take', "haven't", 'have not taken', 'nahi liya', 'नहीं लिया'] },
   { category: 'later', phrases: ['later', 'baad mein', 'abhi nahi', 'बाद में', 'अभी नहीं'] },
   { category: 'supply', phrases: ['ran out', 'khatam', 'nahi hai', 'खत्म', 'नहीं है'] },
-  { category: 'felt_unwell', phrases: ['not feeling well', 'dizzy', 'chakkar', 'dard', 'pain', 'tabiyat', 'चक्कर', 'दर्द', 'तबियत'] },
   { category: 'taken', phrases: ['yes', 'taken', 'le li', 'liya', 'ho gaya', 'ले ली', 'लिया', 'हो गया', 'हाँ'] },
 ]
 
@@ -63,4 +64,4 @@ export function acknowledgementFor(category: ParentReplyCategory, language: Repl
   return template.replace('{name}', name).replace('{time}', timeLabel)
 }
 
-export const FAMILY_MESSAGE_AUTO_REPLY = 'Thank you for telling us. We have shared your message with your family. If you need urgent help, please call your local emergency number.'
+export const FAMILY_MESSAGE_AUTO_REPLY = 'Thank you for telling us. Replies are visible only to family members you have agreed to share them with. If you need urgent help, please call your local emergency number.'

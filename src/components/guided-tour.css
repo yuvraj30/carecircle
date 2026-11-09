@@ -40,7 +40,9 @@
 .cc-tour button:focus-visible, .cc-tour-launch:focus-visible { outline: 3px solid #80a98a; outline-offset: 3px; }
 
 @media (max-width: 1023px) {
-  .cc-tour, .cc-tour-launch { right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .cc-tour { right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); }
+  /* Keep the restart control in normal flow so it cannot cover care actions. */
+  .cc-tour-launch { position: static; margin: 18px auto calc(94px + env(safe-area-inset-bottom)); }
   .cc-tour { padding: 16px 18px; }
   .cc-tour-copy { min-height: 0; padding: 15px 2px 10px; }
   .cc-tour-copy h2 { font-size: 21px; }

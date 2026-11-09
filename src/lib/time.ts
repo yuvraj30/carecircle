@@ -29,3 +29,9 @@ export function durationLabel(minutes: number) {
 export function dayAndClock(date: Date) {
   return `${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${clockOf(date)}`
 }
+
+// Include the year for recorded history, which may span multiple years.
+export function recordedDateAndClock(date: Date) {
+  if (Number.isNaN(date.getTime())) return 'Date unavailable'
+  return `${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}, ${clockOf(date)}`
+}

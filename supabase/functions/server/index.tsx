@@ -524,15 +524,30 @@ app.delete(`${PREFIX}/circles/:circleId/members/:userId`, async (c) => {
 });
 
 app.get(`${PREFIX}/invites/:token`, async (c) => {
-  const invite = await kv.get(`invite:${c.req.param("token")}`);
+  const token = c.req.param("token");
+  const invite = await kv.get(`invite:${token}`);
   if (!invite) return fail(c, 404, "Invitation not found");
+  if (invite.status !== "Pending") return c.json({ state: "unavailable" });
+  if (!Number.isFinite(Date.parse(invite.expiresAt)) || Date.parse(invite.expiresAt) <= Date.now()) {
+    return c.json({ state: "expired" });
+  }
+  const members = (await kv.get(moduleKey(invite.circleId, "members"))) ?? [];
+  if (!isCurrentInvitation(members, invite, token)) return c.json({ state: "unavailable" });
+  // A token can be forwarded. Do not reveal the recipient, circle, inviter or patient
+  // to the bearer until the authenticated email matches the intended recipient.
+  const user = await authenticate(c);
+  if (!user) return c.json({ state: "sign-in" });
+  if (normalizeInviteEmail(user.email) !== normalizeInviteEmail(invite.email)) {
+    return c.json({ state: "wrong-account" });
+  }
   const circle = await kv.get(`circle:${invite.circleId}:meta`);
+  const inviter = members.find((member: any) => member.userId === invite.invitedBy && member.status === "Active");
   return c.json({
-    circle: { id: circle?.id, name: circle?.name },
-    email: invite.email,
+    state: "verified",
+    circleName: cleanText(circle?.name, 120) || "Your care circle",
+    inviterName: cleanText(inviter?.name, 120) || "A coordinator",
+    activeMemberCount: members.filter((member: any) => member?.status === "Active").length,
     role: invite.role,
-    status: invite.status,
-    expiresAt: invite.expiresAt,
   });
 });
 

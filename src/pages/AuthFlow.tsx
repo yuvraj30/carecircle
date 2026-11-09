@@ -1,17 +1,13 @@
 import '../auth-refresh.css'
+import '../invite-welcome.css'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useApp } from '../context'
 import { HeartIcon } from '../components/icons'
 import { Button, Card, Field } from '../components/ui'
-import { publicApi, supabase } from '../lib/supabase'
+import { api, publicApi, supabase } from '../lib/supabase'
 import { useAuthStatus } from '../auth/AuthStatus'
 import { returnPath } from '../auth/Gate'
-
-function maskedEmail(email: string) {
-  const [name = '', domain = ''] = email.split('@')
-  return `${name.slice(0, 2)}${'*'.repeat(Math.max(2, name.length - 2))}@${domain}`
-}
 
 function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return <div className="cc-auth-shell">
@@ -150,24 +146,55 @@ export function PasswordSuccess() {
 }
 
 export function Invitation() {
-  const { state, actions, now } = useApp()
+  const { state, actions } = useApp()
   const { status: token = '' } = useParams()
   const navigate = useNavigate()
-  const [invite, setInvite] = useState<any>(null)
+  const [invite, setInvite] = useState<{
+    state: 'sign-in' | 'wrong-account' | 'verified' | 'expired' | 'unavailable'
+    inviterName?: string
+    circleName?: string
+    activeMemberCount?: number
+    role?: 'caregiver' | 'view-only'
+  } | null>(null)
   const [error, setError] = useState('')
+  const [accepting, setAccepting] = useState(false)
   const auth = useAuthStatus()
   useEffect(() => {
-    if (!token || token === 'expired' || token === 'active') return
-    publicApi(`/invites/${token}`).then(setInvite).catch(reason => setError(reason.message))
-  }, [token])
-  const expired = token === 'expired' || (invite?.expiresAt && Date.parse(invite.expiresAt) <= now().getTime())
-  const mismatch = Boolean(auth.user?.email && invite?.email && auth.user.email.toLowerCase() !== invite.email.toLowerCase())
-  return <AuthShell title={expired ? 'Invitation expired' : 'Care-circle invitation'} subtitle={error || (invite ? `${invite.circle.name} · ${invite.role}` : 'Validating secure invitation…')}>
-    <Card className="p-5">
-      {expired ? <p className="text-sm text-slate-600">Ask a coordinator for a new shareable invitation link.</p> : mismatch ? <><p className="text-sm text-slate-600">This invitation was sent to {maskedEmail(invite.email)}. Sign out, then continue with that address.</p><Button className="w-full mt-5" variant="secondary" onClick={() => { sessionStorage.setItem('carecircle-return-to', JSON.stringify({ path: `/invite/${token}`, action: '' })); actions.signOut() }}>Sign out</Button></> : <>
-        <p className="text-sm text-slate-600">The signed-in email must match the invitation recipient. Invitation links expire and can be used only while pending.</p>
-        <div className="flex gap-3 mt-6"><Button variant="secondary" className="flex-1" onClick={() => navigate('/login')}>Decline</Button><Button className="flex-1" disabled={!token || Boolean(error)} onClick={async () => { await actions.acceptInvitation(token, true); navigate(state.currentUser ? '/app' : '/login') }}>Accept invitation</Button></div>
-      </>}
+    if (auth.loading) return
+    if (!token || token === 'expired' || token === 'active') {
+      setInvite({ state: token === 'expired' ? 'expired' : 'unavailable' })
+      return
+    }
+    let current = true
+    setInvite(null)
+    setError('')
+    api<typeof invite>(`/invites/${encodeURIComponent(token)}`).then(result => {
+      if (!current) return
+      if (!result || !['sign-in', 'wrong-account', 'verified', 'expired', 'unavailable'].includes(result.state)) {
+        setError('This invitation could not be checked. Ask the coordinator for help.')
+      } else setInvite(result)
+    }).catch(() => { if (current) setError('This invitation could not be checked. Ask the coordinator for a new link.') })
+    return () => { current = false }
+  }, [token, auth.loading, auth.session?.access_token])
+  const rememberReturn = () => {
+    const path = `/invite/${encodeURIComponent(token)}`
+    // Older builds queued automatic acceptance before authentication. Visiting
+    // this review flow must require an explicit decision after signing in.
+    sessionStorage.removeItem('carecircle-invite-token')
+    sessionStorage.setItem('carecircle-return-to', JSON.stringify({ path, action: '' }))
+    return `?returnTo=${encodeURIComponent(path)}`
+  }
+  const status = invite?.state
+  return <AuthShell title={status === 'verified' ? `${invite?.inviterName} invited you` : status === 'expired' ? 'Invitation expired' : 'A place in the circle'} subtitle={status === 'verified' ? `Join ${invite?.circleName} and share care together.` : 'Someone has invited you to share care on CareCircle.'}>
+    <Card className="cc-invitation-welcome">
+      <div className="cc-invitation-welcome-icon" aria-hidden="true"><HeartIcon className="w-5 h-5" /></div>
+      {(auth.loading || (!invite && !error)) && <p role="status">Checking your invitation…</p>}
+      {error && <p role="alert">{error}</p>}
+      {status === 'expired' && <p>Ask the coordinator for a new private invitation link.</p>}
+      {status === 'unavailable' && <p>This invitation is no longer available. Ask the coordinator if you still wish to join.</p>}
+      {status === 'sign-in' && <><h3>Care is lighter together.</h3><p>Sign in with the email your coordinator invited. You can review the invitation before deciding to join.</p><div className="cc-invitation-welcome-actions"><Button onClick={() => navigate(`/login${rememberReturn()}`)}>Sign in to review</Button><Button variant="secondary" onClick={() => navigate(`/create-account${rememberReturn()}`)}>Create an account</Button></div></>}
+      {status === 'wrong-account' && <><h3>Use the invited account</h3><p>The signed-in email doesn’t match this invitation. Sign out and return with the email your coordinator invited.</p><Button className="mt-4" variant="secondary" onClick={() => { rememberReturn(); void actions.signOut() }}>Sign out</Button></>}
+      {status === 'verified' && invite && <><h3>A little help makes a difference.</h3><p>{invite.activeMemberCount === 1 ? '1 person is already part of this circle.' : `${invite.activeMemberCount} people are already part of this circle.`} {invite.role === 'view-only' ? 'You have been invited to view permitted updates.' : 'You can help with care tasks and prepare questions for visits.'}</p><p className="cc-invitation-privacy">Only join if you recognise the invitation and have the appropriate consent to share care.</p><div className="cc-invitation-welcome-actions"><Button disabled={accepting || state.isLoading} onClick={async () => { setAccepting(true); setError(''); try { await actions.acceptInvitation(token, true); navigate('/app') } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not accept this invitation.') } finally { setAccepting(false) } }}>{accepting ? 'Joining…' : 'Join the circle'}</Button><Button variant="secondary" disabled={accepting} onClick={() => navigate('/')}>Not now</Button></div></>}
     </Card>
   </AuthShell>
 }
