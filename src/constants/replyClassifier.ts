@@ -13,9 +13,24 @@ const RULES: { category: ParentReplyCategory; phrases: string[] }[] = [
   { category: 'taken', phrases: ['yes', 'taken', 'le li', 'liya', 'ho gaya', 'ले ली', 'लिया', 'हो गया', 'हाँ'] },
 ]
 
+// A "taken" reply confirms a dose, so it must be unmistakable. Any of these words beside a "taken"
+// phrase ("not yet taken", "liya nahi") leaves the reply for a person to read instead.
+const NEGATIONS = new Set(['not', 'no', 'never', 'cannot', 'forgot', 'nahi', 'nahin', 'nai', 'nhi', 'na', 'mat', 'bhool', 'bhul', 'नहीं', 'नही', 'ना', 'मत', 'भूल'])
+
+function wordsOf(text: string) {
+  return text.replace(/’/g, "'").split(/[^\p{L}\p{M}\p{N}']+/u).filter(Boolean)
+}
+
 export function classifyParentReply(reply: string): ParentReplyCategory {
   const normalized = reply.trim().toLocaleLowerCase()
+  const words = wordsOf(normalized)
+  const spaced = ` ${words.join(' ')} `
   for (const rule of RULES) {
+    if (rule.category === 'taken') {
+      // Whole words only, so "mistaken" or a name containing "liya" never confirms a dose.
+      if (!rule.phrases.some(phrase => words.join(' ') === phrase || (phrase.length > 3 && spaced.includes(` ${phrase} `)))) continue
+      return words.some(word => NEGATIONS.has(word) || word.endsWith("n't")) ? 'other' : 'taken'
+    }
     if (rule.phrases.some(phrase => normalized === phrase || (phrase.length > 3 && normalized.includes(phrase)))) return rule.category
   }
   return 'other'
