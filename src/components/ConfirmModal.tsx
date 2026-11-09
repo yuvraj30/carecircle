@@ -75,7 +75,7 @@ export function ConfirmModal() {
               actions.closeConfirm()
             }}
             className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors"
-            style={{ backgroundColor: isDanger ? '#DC2626' : '#4A7FA5' }}
+            style={{ backgroundColor: isDanger ? '#DC2626' : '#2B6B50' }}
           >
             {confirmConfig.confirmLabel ?? 'Confirm'}
           </button>

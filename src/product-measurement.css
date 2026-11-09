@@ -1,0 +1,15 @@
+.cc-measurement { padding: 22px; border: 1px solid #dce8dd; border-radius: 22px; background: #fffefb; color: #29473a; }
+.cc-measurement-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.cc-measurement-kicker { color: #708f7b; font-size: 10px; font-weight: 800; letter-spacing: .11em; }
+.cc-measurement h2 { margin: 5px 0 0; font-size: 18px; font-weight: 700; }
+.cc-measurement-state { flex-shrink: 0; padding: 4px 9px; border-radius: 999px; background: #edf4ed; color: #315e49; font-size: 12px; font-weight: 700; }
+.cc-measurement p { margin-top: 12px; color: #60766a; font-size: 13px; line-height: 1.55; }
+.cc-measurement-button { min-height: 44px; margin-top: 16px; padding: 10px 15px; border-radius: 12px; background: #315e49; color: white; font-size: 13px; font-weight: 700; }
+.cc-measurement-secondary { border: 1px solid #cbdcd0; background: white; color: #315e49; }
+.cc-measurement button:focus-visible, .cc-measurement summary:focus-visible { outline: 3px solid #80a98a; outline-offset: 3px; }
+.cc-measurement details { margin-top: 15px; color: #315e49; font-size: 13px; }
+.cc-measurement summary { cursor: pointer; font-weight: 700; }
+.cc-measurement dl { margin-top: 10px; }
+.cc-measurement dl div { display: flex; justify-content: space-between; gap: 20px; padding: 6px 0; border-bottom: 1px solid #edf2ed; }
+.cc-measurement dd { font-weight: 700; }
+.cc-measurement .cc-measurement-error { color: #a03535; }

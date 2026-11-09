@@ -2,6 +2,7 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
 import * as kv from "./kv_store.tsx";
+import { hasActiveMemberWithEmail, invitationAcceptError, isCurrentInvitation, membersForRole, normalizeInviteEmail, replacementTokens, revokedInvitations } from "./invitationPolicy.ts";
 
 type CircleRole = "coordinator" | "caregiver" | "view-only";
 type Membership = {
@@ -283,6 +284,7 @@ app.get(`${PREFIX}/circles/:circleId/snapshot`, async (c) => {
     ...MODULES.map((module) => kv.get(moduleKey(circleId, module))),
   ]);
   const snapshot = Object.fromEntries(MODULES.map((module, index) => [module, values[index] ?? []]));
+  snapshot.members = membersForRole(snapshot.members, access.membership.role);
   snapshot.documents = snapshot.documents.filter((document: any) => canReadDocument(document, access.membership!.role));
   snapshot.careEvents = snapshot.careEvents.map((event: any) => {
     if (event.kind === "weekly_digest" && !event.recipientIds?.includes(access.user!.id)) {
@@ -452,6 +454,13 @@ app.post(`${PREFIX}/circles/:circleId/invites`, async (c) => {
     caregiverType: body?.caregiverType === "Primary" || body?.caregiverType === "Backup" ? body.caregiverType : undefined,
   };
   const members = (await kv.get(moduleKey(circleId, "members"))) ?? [];
+  if (hasActiveMemberWithEmail(members, email)) {
+    return fail(c, 409, "This person is already an active circle member");
+  }
+  // Replacing an invitation must invalidate its previous link, not leave a second valid token.
+  const previousTokens = replacementTokens(members, email);
+  const previousInvites = await Promise.all(previousTokens.map((oldToken) => kv.get(`invite:${oldToken}`)));
+  const revoked = revokedInvitations(circleId, email, previousTokens, previousInvites, new Date().toISOString());
   const pendingMember = {
     id: `invite-${token}`,
     email,
@@ -466,8 +475,8 @@ app.post(`${PREFIX}/circles/:circleId/invites`, async (c) => {
     expiresAt,
   };
   await kv.mset(
-    [`invite:${token}`, moduleKey(circleId, "members")],
-    [invite, [...members.filter((item: any) => item.email?.toLowerCase() !== email), pendingMember]],
+    [...revoked.map((item) => item.key), `invite:${token}`, moduleKey(circleId, "members")],
+    [...revoked.map((item) => item.value), invite, [...members.filter((item: any) => normalizeInviteEmail(item.email) !== email), pendingMember]],
   );
   return c.json({
     invite: { circleId, email, role, expiresAt },
@@ -546,12 +555,13 @@ app.post(`${PREFIX}/invites/:token/accept`, async (c) => {
   if (!auth.user) return auth.response;
   const token = c.req.param("token");
   const invite = await kv.get(`invite:${token}`);
-  if (!invite) return fail(c, 404, "Invitation not found");
-  if (invite.status !== "Pending") return fail(c, 409, "Invitation is no longer pending");
-  if (Date.parse(invite.expiresAt) <= Date.now()) return fail(c, 410, "Invitation expired");
-  if (invite.email.toLowerCase() !== auth.user.email?.toLowerCase()) {
-    return fail(c, 403, "Invitation recipient does not match the signed-in email");
-  }
+  const rejection = invitationAcceptError(invite, auth.user.email, Date.now());
+  if (rejection === "not_found") return fail(c, 404, "Invitation not found");
+  if (rejection === "not_pending") return fail(c, 409, "Invitation is no longer pending");
+  if (rejection === "expired") return fail(c, 410, "Invitation expired");
+  if (rejection === "wrong_recipient") return fail(c, 403, "Invitation recipient does not match the signed-in email");
+  const members = (await kv.get(moduleKey(invite.circleId, "members"))) ?? [];
+  if (!isCurrentInvitation(members, invite, token)) return fail(c, 409, "Invitation has been replaced or cancelled");
   const membership: Membership = {
     circleId: invite.circleId,
     userId: auth.user.id,
@@ -562,7 +572,6 @@ app.post(`${PREFIX}/invites/:token/accept`, async (c) => {
     caregiverType: invite.caregiverType,
     status: "Active",
   };
-  const members = (await kv.get(moduleKey(invite.circleId, "members"))) ?? [];
   const patients = (await kv.get(moduleKey(invite.circleId, "patients"))) ?? [];
   const careEvents = (await kv.get(moduleKey(invite.circleId, "careEvents"))) ?? [];
   const acceptedAt = new Date().toISOString();

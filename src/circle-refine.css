@@ -1,0 +1,26 @@
+/* Circle directory: an at-a-glance view of the people involved in care. */
+.cc-circle-page { min-width:0; }
+.cc-circle-refined-intro { position:relative; overflow:hidden; min-height:156px; background:linear-gradient(115deg,#e5f1e7 0%,#f4f6eb 100%); border-color:#dae9de; }
+.cc-circle-refined-intro::after { content:''; position:absolute; right:18%; bottom:-180px; width:260px; height:260px; border:1px solid #c0dac6; border-radius:50%; box-shadow:0 0 0 30px #dceadf80,0 0 0 60px #dceadf50; pointer-events:none; }
+.cc-circle-refined-intro>div { position:relative; z-index:1; }
+.cc-circle-refined-intro h2 { font-size:clamp(25px,3vw,34px); }
+.cc-circle-intro-summary { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.cc-circle-intro-summary>span { color:#547364; font-size:12px; white-space:nowrap; }
+.cc-circle-intro-summary>span strong { color:#275d46; font-size:16px; }
+.cc-circle-directory { min-width:0; background:#fffefa; border:1px solid #e2eae0; border-radius:22px; padding:28px; }
+.cc-circle-directory .cc-circle-heading { padding:0; }
+.cc-circle-filter { display:flex; gap:6px; overflow:auto; margin:20px 0 18px; border-bottom:1px solid #e8efe7; padding-bottom:14px; }
+.cc-circle-filter button { display:inline-flex; align-items:center; gap:8px; flex:none; min-height:42px; padding:8px 13px; border-radius:11px; color:#5e7869; font-size:13px; font-weight:700; }
+.cc-circle-filter button span { display:inline-grid; place-items:center; min-width:21px; height:21px; border-radius:7px; color:#6d8878; background:#edf3ec; font-size:11px; }
+.cc-circle-filter button[aria-pressed=true] { color:#1d5c43; background:#e8f2e9; }
+.cc-circle-filter button[aria-pressed=true] span { color:#1d5c43; background:#d3e8d8; }
+.cc-circle-filter button:focus-visible,.cc-circle-permissions summary:focus-visible { outline:3px solid #b37c30; outline-offset:3px; }
+.cc-circle-filter-empty { padding:38px 15px; border:1px dashed #dbe8dc; border-radius:16px; color:#688171; text-align:center; font-size:14px; }
+.cc-circle-directory .cc-members-grid { gap:12px; }
+.cc-circle-directory .cc-member-card { background:#fbfcf8; box-shadow:none; border-color:#e5ece3; padding:20px; display:flex; flex-direction:column; }
+.cc-circle-directory .cc-member-name h3 { overflow-wrap:anywhere; }
+.cc-circle-directory .cc-member-details { margin-top:18px; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,.55fr); }
+.cc-circle-directory .cc-member-details strong { overflow-wrap:anywhere; line-height:1.4; }
+.cc-circle-directory .cc-member-actions { margin-top:auto; }
+.cc-circle-bottom > div { min-width:0; }
+@media(max-width:700px) { .cc-circle-directory { padding:20px; }.cc-circle-refined-intro { min-height:0; }.cc-circle-intro-summary { gap:8px; }.cc-circle-intro-summary>span { width:100%; padding-left:8px; }.cc-circle-refined-intro::after { right:-160px; }.cc-circle-directory .cc-member-card { padding:18px; } }

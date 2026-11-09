@@ -1,3 +1,5 @@
+import '../secondary-consistency.css'
+import '../records-refresh.css'
 import { useEffect, useState } from 'react'
 import { useApp } from '../context'
 import type { Document } from '../types'
@@ -6,10 +8,10 @@ import { Button, Card, Dialog, Field, PageHeader, SelectField, TextAreaField } f
 import { api } from '../lib/supabase'
 
 const categoryStyle: Record<Document['category'], string> = {
-  Prescription: 'bg-blue-50 text-blue-700',
-  'Lab Report': 'bg-violet-50 text-violet-700',
-  Insurance: 'bg-amber-50 text-amber-700',
-  Other: 'bg-slate-100 text-slate-600',
+  Prescription: 'cc-secondary-icon cc-secondary-sage',
+  'Lab Report': 'cc-secondary-icon cc-secondary-olive',
+  Insurance: 'cc-secondary-icon cc-secondary-gold',
+  Other: 'cc-secondary-icon cc-secondary-neutral',
 }
 
 export function Documents() {
@@ -23,12 +25,12 @@ export function Documents() {
     `${document.name} ${document.description}`.toLowerCase().includes(search.toLowerCase())
   )
   return <div className="space-y-6">
-    <PageHeader title="Medical Documents" subtitle="Private files with role-scoped signed access" action={<Button disabled={state.activeCircleRole === 'view-only'} onClick={() => setUpload(true)}><PlusIcon className="w-4 h-4 inline mr-2" />Upload document</Button>} />
-    <div className="grid lg:grid-cols-[1fr_auto] gap-4">
+    <PageHeader title="Care records" subtitle="The important documents your circle needs, together." action={<Button disabled={state.activeCircleRole === 'view-only'} onClick={() => setUpload(true)}><PlusIcon className="w-4 h-4 inline mr-2" />Upload document</Button>} />
+    <section className="cc-records-tools"><div className="cc-records-intro"><div><span>YOUR CARE LIBRARY</span><h2>Everything in its place.</h2><p>Find the records shared with you.</p></div><strong>{state.documents.length}<small> records</small></strong></div><div className="cc-records-filter">
       <label className="relative"><MagnifyingGlassIcon className="absolute left-3 top-3 w-4 h-4 text-slate-400" /><input aria-label="Search documents" value={search} onChange={event => setSearch(event.target.value)} className="w-full min-h-11 pl-10 pr-3 rounded-xl border border-slate-200" placeholder="Search records…" /></label>
-      <div className="flex gap-2">{(['All', 'Prescription', 'Lab Report', 'Insurance'] as const).map(value => <button key={value} onClick={() => setCategory(value)} className={`px-3 rounded-full text-xs font-semibold ${category === value ? 'bg-[#4A7FA5] text-white' : 'bg-white border border-slate-200'}`}>{value}</button>)}</div>
-    </div>
-    {filtered.length ? <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-3">{filtered.map(document => <button key={document.id} onClick={() => actions.openDocumentDetail(document.id)} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 text-left hover:shadow-md"><div className={`w-11 h-11 rounded-xl flex items-center justify-center ${categoryStyle[document.category]}`}><DocumentIcon className="w-5 h-5" /></div><h2 className="font-semibold text-sm mt-4">{document.name}</h2><p className="text-xs text-slate-400 mt-1">{document.category} · {document.fileType} · {document.access ?? 'All members'}</p>{document.linkedId && <p className="text-xs text-[#4A7FA5] mt-2">Linked {document.linkedType}</p>}</button>)}</div> : <Card className="p-12 text-center"><FolderIcon className="w-8 h-8 mx-auto text-slate-300" /><p className="mt-3 text-sm">No records match this filter.</p></Card>}
+      <div className="flex gap-2">{(['All', 'Prescription', 'Lab Report', 'Insurance', 'Other'] as const).map(value => <button key={value} type="button" aria-pressed={category === value} onClick={() => setCategory(value)}>{value}</button>)}</div>
+    </div></section>
+    {filtered.length ? <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-3">{filtered.map(document => <button key={document.id} onClick={() => actions.openDocumentDetail(document.id)} className="cc-record-card"><div className={`w-11 h-11 rounded-xl flex items-center justify-center ${categoryStyle[document.category]}`}><DocumentIcon className="w-5 h-5" /></div><span className="cc-record-kicker">{document.category}</span><h2 className="font-semibold text-sm mt-4">{document.name}</h2><p className="text-xs text-slate-400 mt-1">{document.fileType} · {document.access ?? 'All members'}</p>{document.linkedId && <p className="text-xs cc-secondary-link mt-2">Linked {document.linkedType}</p>}</button>)}</div> : <Card className="p-12 text-center"><FolderIcon className="w-8 h-8 mx-auto text-slate-300" /><p className="mt-3 text-sm">No records match this filter.</p></Card>}
     {selected && <DocumentDetail document={selected} onClose={() => actions.openDocumentDetail(null)} />}
     {upload && <UploadDocument onClose={() => setUpload(false)} />}
   </div>
@@ -135,7 +137,7 @@ function UploadDocument({ onClose }: { onClose: () => void }) {
   return <Dialog title="Upload private document" onClose={onClose} wide><div className="space-y-4">
     <label className="block border-2 border-dashed rounded-2xl p-6 text-center text-sm"><input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={event => choose(event.target.files?.[0])} />Choose PDF, JPEG, PNG, or WebP</label>
     {error && <p className="bg-rose-50 text-rose-700 p-3 rounded-xl text-sm">{error}</p>}
-    {progress > 0 && <div><div className="h-2 bg-slate-100 rounded-full"><div className="h-2 bg-[#4A7FA5] rounded-full" style={{ width: `${progress}%` }} /></div><p className="text-xs text-slate-400 mt-1">Uploading to private storage…</p></div>}
+    {progress > 0 && <div><div className="h-2 bg-slate-100 rounded-full"><div className="h-2 cc-secondary-progress rounded-full" style={{ width: `${progress}%` }} /></div><p className="text-xs text-slate-400 mt-1">Uploading to private storage…</p></div>}
     <Field label="Name" value={name} onChange={event => setName(event.target.value)} />
     <SelectField label="Category" value={category} onChange={event => setCategory(event.target.value as Document['category'])}><option>Prescription</option><option>Lab Report</option><option>Insurance</option><option>Other</option></SelectField>
     <SelectField label="Access" value={access} onChange={event => setAccess(event.target.value as Document['access'])}><option>All members</option><option>Caregivers and coordinators</option><option>Coordinators only</option></SelectField>

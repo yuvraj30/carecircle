@@ -1,0 +1,22 @@
+/* Dashboard: warm, calm hierarchy and actionable guidance */
+.cc-dashboard-heading { background:linear-gradient(115deg,#143d34,#225b49 78%,#477c63) !important; position:relative; isolation:isolate; }
+.cc-dashboard-heading:before { content:''; position:absolute; width:340px; height:340px; right:2%; top:-175px; border:1px solid #ffffff21; border-radius:50%; box-shadow:0 0 0 48px #ffffff08,0 0 0 96px #ffffff06; pointer-events:none; }
+.cc-dashboard-heading .cc-hero-art { opacity:.18; }
+.cc-dash-section-kicker { display:block; color:#8da396; font-size:10px; letter-spacing:.16em; font-weight:800; margin-bottom:7px; }
+.cc-dashboard .cc-attention { background:#fffefa; border-radius:24px !important; padding:30px !important; }
+.cc-dashboard .cc-section-heading { gap:18px; }
+.cc-dashboard .cc-care-card { background:#f8faf6; border:1px solid #e4ece3; box-shadow:0 5px 18px #254c3608; transition:transform .2s,box-shadow .2s; }
+.cc-dashboard .cc-care-card.is-attention { background:#fbf7ef; border-color:#eee3cf; }
+.cc-dashboard .cc-care-card:hover { transform:translateY(-2px); box-shadow:0 12px 30px #254c3610; }
+.cc-care-action { background:#fff !important; border-color:#dce9dc !important; }
+.cc-dash-nudge { position:relative; overflow:hidden; background:linear-gradient(115deg,#e5f1e6,#f5f7ec); border-color:#d8ead9; padding:24px; }
+.cc-dash-nudge:after { content:'✳'; position:absolute; right:24px; top:12px; font-size:58px; color:#bdd3b8; opacity:.45; pointer-events:none; }
+.cc-dash-nudge .cc-insight-copy { position:relative; z-index:1; }
+.cc-first-reply { background:#edf5ee !important; border-color:#dceadf !important; border-radius:18px !important; }
+.cc-dashboard .cc-side-column { background:#fffefa; }
+.cc-dashboard .cc-appointment { padding:14px; margin-top:16px; background:#f2f7f1; border-radius:16px; }
+.cc-dashboard .cc-update-note { background:#f3f7f2; border:1px solid #e6eee4; line-height:1.6; }
+@media(max-width:767px) { .cc-dashboard .cc-attention { padding:19px !important; }.cc-dashboard-heading:before { right:-140px; }.cc-dash-nudge { padding:18px; }.cc-dashboard .cc-care-card:hover { transform:none; } }
+@media(prefers-reduced-motion:reduce) { .cc-dashboard .cc-care-card { transition:none; } }
+.cc-dashboard-links { border:1px solid #dfe9df; border-radius:16px; background:#fffefa; padding:12px 18px; margin:0 0 16px; }.cc-dashboard-links summary { cursor:pointer; min-height:36px; display:flex; align-items:center; color:#416b55; font-size:13px; font-weight:700; }.cc-dashboard-links .cc-summary { margin:10px 0 4px; }
+.cc-task-focus { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; padding:12px 14px; border:1px solid #d8e9dc; border-radius:12px; background:#eff7f0; color:#406a54; font-size:13px; }.cc-task-focus button { font-weight:700; color:#206046; }.cc-task-focus button:focus-visible { outline:3px solid #bb7a21; outline-offset:2px; }

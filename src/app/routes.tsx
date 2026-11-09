@@ -9,11 +9,15 @@ import { GateProvider } from '../auth/Gate'
 import { PublicLanding, SampleShell } from '../pages/Public'
 import { Dashboard } from '../pages/Dashboard'
 import { Medicines } from '../pages/Medicines'
-import { CareCircle } from '../pages/Management'
+import { CareCircle, Tasks } from '../pages/Management'
+import { Appointments } from '../pages/Appointments'
+import { Timeline } from '../pages/Timeline'
 import { SessionExpiredOverlay } from '../components/SessionExpiredOverlay'
+import { GuidedTour } from '../components/GuidedTour'
+import { ProductMeasurementObserver } from '../components/ProductMeasurement'
 
 function AppProviderRoute() {
-  return <GateProvider><AppProvider><Outlet /><SessionExpiredOverlay /></AppProvider></GateProvider>
+  return <GateProvider><AppProvider><Outlet /><GuidedTour /><ProductMeasurementObserver /><SessionExpiredOverlay /></AppProvider></GateProvider>
 }
 
 function SampleProviderRoute() {
@@ -62,6 +66,9 @@ export const router = createBrowserRouter([{
         { path: '/sample', Component: Dashboard },
         { path: '/sample/medicines', Component: Medicines },
         { path: '/sample/circle', Component: CareCircle },
+        { path: '/sample/tasks', Component: Tasks },
+        { path: '/sample/appointments', Component: Appointments },
+        { path: '/sample/timeline', Component: Timeline },
       ],
     },
     {

@@ -1,0 +1,9 @@
+.cc-invite-progress { flex-basis:100%; padding:14px; border-radius:16px; background:#f1f6ef; border:1px solid #e1ebe0; }
+.cc-invite-progress-label { color:#315d49; font-size:12px; font-weight:750; }
+.cc-invite-progress p { margin:6px 0 0; color:#5b7065; font-size:12px; line-height:1.5; }
+.cc-invite-progress-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; }
+.cc-invite-progress-actions button,.cc-invite-progress-actions a { min-height:38px; display:inline-flex; align-items:center; padding:8px 11px; border:1px solid #d6e3d7; border-radius:10px; color:#315d49; background:#fff; font-size:12px; font-weight:700; }
+.cc-invite-progress-actions button:hover,.cc-invite-progress-actions a:hover { background:#e9f1e8; }
+.cc-invite-progress-actions :focus-visible,.cc-invite-copy-fallback input:focus-visible { outline:3px solid #80a98a; outline-offset:2px; }
+.cc-invite-copy-fallback label { display:block; margin-top:10px; color:#52685b; font-size:12px; }
+.cc-invite-copy-fallback input { display:block; width:100%; margin-top:5px; padding:8px; border:1px solid #d6e3d7; border-radius:8px; background:#fff; font-size:12px; }

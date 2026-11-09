@@ -1,0 +1,86 @@
+/* One calm, shared introduction for every workspace page. */
+.cc-page-hero {
+  position: relative;
+  display: flex;
+  align-items: center !important;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 192px;
+  padding: 32px 38px !important;
+  overflow: hidden;
+  border: 0 !important;
+  border-radius: 24px !important;
+  background: linear-gradient(115deg, #123f36, #215f50) !important;
+  color: #fff;
+  box-shadow: none !important;
+}
+
+/* The same quiet circular artwork appears on every page, including mobile. */
+.cc-page-hero::before,
+.cc-page-hero::after,
+.cc-page-header:has(> :nth-child(2))::before,
+.cc-page-header:has(> :nth-child(2))::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: auto;
+  right: 12% !important;
+  top: -155px !important;
+  width: 310px !important;
+  height: 310px !important;
+  margin: 0;
+  border: 1px solid rgba(236, 248, 235, .12);
+  border-radius: 50%;
+  background: transparent !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 0 42px rgba(236, 248, 235, .035), 0 0 0 84px rgba(236, 248, 235, .025);
+  pointer-events: none;
+}
+.cc-page-hero::after,
+.cc-page-header:has(> :nth-child(2))::after { display: none; }
+.cc-page-hero > * { position: relative; z-index: 1; }
+.cc-page-hero .cc-page-title { display: block; min-width: 0; }
+.cc-page-hero-eyebrow,
+.cc-page-hero .cc-work-eyebrow,
+.cc-page-hero .ccv-eyebrow,
+.cc-page-hero .cc-calm-eyebrow {
+  display: block;
+  color: #e8d3a2 !important;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.cc-page-hero h1 {
+  margin: 10px 0 0 !important;
+  color: #fff !important;
+  font: 700 clamp(32px, 3.5vw, 44px)/1.08 'Bricolage Grotesque', 'Figtree', sans-serif !important;
+  letter-spacing: -.045em !important;
+  overflow-wrap: anywhere;
+}
+.cc-page-hero h1 em { color: inherit !important; font-style: normal; }
+.cc-page-hero h1 + p { margin-top: 9px !important; color: #d1e5d8 !important; font-size: 14px; line-height: 1.5; }
+.cc-page-hero .cc-btn-primary {
+  background: #e8d3a2 !important;
+  color: #30402f !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.cc-page-hero .cc-btn-primary:hover:not(:disabled) { background: #f2dfb4 !important; }
+.cc-page-hero .cc-btn-secondary {
+  background: #fffef9 !important;
+  border-color: transparent !important;
+  color: #245647 !important;
+}
+.cc-page-hero button:focus-visible { outline: 3px solid #f3d28d !important; outline-offset: 3px; }
+
+@media (max-width: 767px) {
+  .cc-page-hero { align-items: flex-start !important; flex-direction: column; min-height: 0; gap: 20px; padding: 24px !important; border-radius: 20px !important; }
+  .cc-page-hero::before,
+  .cc-page-header:has(> :nth-child(2))::before { top: -140px !important; right: -100px !important; width: 260px !important; height: 260px !important; }
+  .cc-page-hero h1 { font-size: 32px !important; }
+  .cc-page-hero > .cc-btn { max-width: 100%; }
+  .cc-page-hero > .cc-page-title + div { flex-wrap: wrap; max-width: 100%; }
+  .cc-page-title { width: 100%; }
+}

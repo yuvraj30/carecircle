@@ -278,6 +278,8 @@ export interface CircleMember {
   relationship: string
   role: CircleRole
   status: 'Active' | 'Invited' | 'Declined' | 'Cancelled'
+  inviteToken?: string
+  expiresAt?: string
   caregiverType?: 'Primary' | 'Backup'
   initials: string
   color: string

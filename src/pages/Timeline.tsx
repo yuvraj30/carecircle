@@ -1,7 +1,8 @@
+import '../secondary-consistency.css'
 import { useState } from 'react'
 import { useApp } from '../context'
 import { ClockIcon, CheckCircleIcon, PillIcon, ShieldCheckIcon } from '../components/icons'
-import { Field, PageHeader } from '../components/ui'
+import { PageHeader } from '../components/ui'
 import type { CareEvent, CareEventKind } from '../types'
 import { eventTextForMember } from '../lib/careEvents'
 
@@ -30,18 +31,11 @@ function eventIcon(kind: CareEventKind) {
 }
 
 function eventColors(kind: CareEventKind) {
-  if (kind === 'parent_replied') return 'bg-emerald-50 text-emerald-700'
-  if (kind === 'family_confirmed') return 'bg-blue-50 text-blue-700'
-  if (kind === 'consent_changed') return 'bg-violet-50 text-violet-700'
-  if (kind === 'not_taken_recorded') return 'bg-slate-100 text-slate-600'
-  return 'bg-amber-50 text-amber-700'
-}
-
-function fmtDatetime(iso: string) {
-  return new Date(iso).toLocaleString('en-IN', {
-    weekday: 'short', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: true,
-  })
+  if (kind === 'parent_replied') return 'cc-secondary-icon cc-secondary-sage'
+  if (kind === 'family_confirmed') return 'cc-secondary-icon cc-secondary-olive'
+  if (kind === 'consent_changed') return 'cc-secondary-icon cc-secondary-neutral'
+  if (kind === 'not_taken_recorded') return 'cc-secondary-icon cc-secondary-neutral'
+  return 'cc-secondary-icon cc-secondary-gold'
 }
 
 function groupByDate(events: CareEvent[]): [string, CareEvent[]][] {
@@ -63,22 +57,23 @@ export function Timeline() {
   const activePatient = state.patients.find(patient => patient.id === state.activePatientId)
   const events = state.careEvents
     .filter(event => event.patientId === state.activePatientId)
-    .filter(event => (filter === 'all' || event.kind === filter || (filter === 'tasks' && event.kind.startsWith('task_'))) && event.text.toLowerCase().includes(search.toLowerCase()))
+    .filter(event => (filter === 'all' || event.kind === filter || (filter === 'tasks' && event.kind.startsWith('task_'))) && eventTextForMember(event, activePatient, state.currentUser?.id).toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
   const groups = groupByDate(events)
 
-  return <div className="space-y-6">
-    <PageHeader title="Timeline" subtitle={`Append-only reminder, reply, confirmation and consent events for ${activePatient?.name}.`} />
-    <Field label="Search timeline" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search event text…" />
-    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Filter timeline">
-      {FILTERS.map(item => <button key={item.value} onClick={() => setFilter(item.value)} role="tab" aria-selected={filter === item.value} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 ${filter === item.value ? 'bg-[#4A7FA5] text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200'}`}>{item.label}</button>)}
-    </div>
-    {!groups.length ? <div className="text-center py-16 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200"><ClockIcon className="w-8 h-8 mx-auto mb-3 text-slate-300" /><p className="text-sm font-medium">No events for this filter</p></div> : <div className="grid xl:grid-cols-2 gap-x-8 gap-y-6 items-start">
-      {groups.map(([date, dateEvents]) => <section key={date}><h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">{date}</h2><div className="space-y-2">{dateEvents.map(event => {
+  return <div className="cc-timeline-page">
+    <PageHeader title="Care timeline" subtitle={`A shared record of care for ${activePatient?.parentChannel.preferredName ?? 'your circle'}.`} />
+    <section className="cc-timeline-tools" aria-label="Find a care update">
+      <div className="cc-timeline-tools-head"><div><span className="cc-timeline-kicker">THE SHARED STORY</span><h2>Care, in context.</h2><p>Every update, in one place.</p></div><div className="cc-timeline-count"><strong>{events.length}</strong><span>{events.length === 1 ? 'update' : 'updates'}</span></div></div>
+      <label className="cc-timeline-search"><span>Search updates</span><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search by name or detail" /></label>
+      <div className="cc-timeline-filters" role="group" aria-label="Filter timeline">{FILTERS.map(item => <button key={item.value} type="button" onClick={() => setFilter(item.value)} aria-pressed={filter === item.value}>{item.label}</button>)}</div>
+    </section>
+    {!groups.length ? <div className="cc-timeline-empty"><ClockIcon className="w-7 h-7" /><strong>No updates found</strong><p>Try a different search or filter.</p><button type="button" onClick={() => { setFilter('all'); setSearch('') }}>Clear filters</button></div> : <div className="cc-timeline-feed">
+      {groups.map(([date, dateEvents]) => <section key={date} className="cc-timeline-day"><div className="cc-timeline-date"><span>CARE JOURNAL</span><h2>{date}</h2><small>{dateEvents.length} {dateEvents.length === 1 ? 'update' : 'updates'}</small></div><div className="cc-timeline-list">{dateEvents.map(event => {
         const member = state.members.find(item => (item.userId ?? item.id) === event.actorId)
         const target = state.members.find(item => (item.userId ?? item.id) === event.targetId)
-        const actor = target ? `For ${target.name}` : event.actorType === 'parent' ? activePatient?.parentChannel.preferredName : event.actorType === 'system' ? 'Care Circle schedule' : member?.name ?? 'Family member'
-        return <article key={event.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-start gap-3"><div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${eventColors(event.kind)}`}>{eventIcon(event.kind)}</div><div className="min-w-0"><p className="text-sm font-semibold text-slate-800">{eventTextForMember(event, activePatient, state.currentUser?.id)}</p><p className="text-xs text-slate-500 mt-1">{actor} · {fmtDatetime(event.at)}</p></div></article>
+        const actor = target ? `For ${target.name}` : event.actorType === 'parent' ? activePatient?.parentChannel.preferredName : event.actorType === 'system' ? 'CareCircle schedule' : member?.name ?? 'Family member'
+        return <article key={event.id} className="cc-timeline-event"><div className={`cc-timeline-icon ${eventColors(event.kind)}`}>{eventIcon(event.kind)}</div><div className="cc-timeline-event-body"><div className="cc-timeline-event-top"><span>{actor}</span><time dateTime={event.at}>{new Date(event.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</time></div><p>{eventTextForMember(event, activePatient, state.currentUser?.id)}</p></div></article>
       })}</div></section>)}
     </div>}
   </div>

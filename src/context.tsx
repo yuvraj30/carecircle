@@ -76,7 +76,7 @@ interface AppActions {
   saveTask: (task: CareTask) => void
   takeTask: (taskId: string) => void
   respondToTask: (taskId: string, response: 'Accepted' | 'Declined', reason?: string) => void
-  completeTask: (taskId: string) => void
+  completeTask: (taskId: string, note?: string) => void
   addHealthEntry: (entry: HealthEntry) => void
   addCareNote: (text: string) => void
   addTimelineComment: (eventId: string, text: string) => void
@@ -623,7 +623,7 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
           scheduledTime: time,
           scheduledDate: date,
           status: isInsideLiveWindow ? 'Unconfirmed' : 'Not recorded',
-          source: isInsideLiveWindow ? 'WhatsApp reminder schedule' : 'Schedule history',
+          source: isInsideLiveWindow ? 'Simulated reminder schedule' : 'Schedule history',
           createdAt: currentTime.toISOString(),
         })
         if (isInsideLiveWindow) {
@@ -635,7 +635,7 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
             alertId: id,
             actorType: 'system',
             actorId: 'care-circle',
-            text: `Reminder sent for ${medication.name} ${medication.dose} at ${time}.${patient.parentChannel.familyNote ? ` ${patient.parentChannel.familyNote}` : ''}`,
+            text: `Simulated reminder for ${medication.name} ${medication.dose} at ${time}; no message was sent.${patient.parentChannel.familyNote ? ` ${patient.parentChannel.familyNote}` : ''}`,
           })
         }
       }
@@ -656,8 +656,8 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
       events.length === 0
         ? 'Dose history updated'
         : events.length === 1
-          ? 'Reminder sent'
-          : `${events.length} reminders sent`,
+          ? 'Simulated reminder recorded; no message sent'
+          : `${events.length} simulated reminders recorded; no messages sent`,
     ).finally(() => { reminderGenerationRef.current = false })
   }, [
     now,
@@ -890,7 +890,7 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
             alertId: alert.id,
             actorType: 'system',
             actorId: 'care-circle',
-            text: `Reminder: ${alert.medicationName} ${alert.dose}. Reply Le li once you have taken it.`,
+            text: `Simulated follow-up; no message was sent. Reminder: ${alert.medicationName} ${alert.dose}. Reply Le li once you have taken it.`,
           })
           unscheduledMessagesToday += 1
           unscheduledMessagesByPatient.set(patient.id, unscheduledMessagesToday)
@@ -959,7 +959,7 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
             alertId: alert.id,
             actorType: 'system',
             actorId: 'care-circle',
-            text: `Namaste ${patient.parentChannel.preferredName} ji, just checking whether you have taken your ${friendlyScheduleTime(alert.scheduledTime)} ${alert.medicationName}. Reply Le li once you have.`,
+            text: `Simulated follow-up; no message was sent. Namaste ${patient.parentChannel.preferredName} ji, just checking whether you have taken your ${friendlyScheduleTime(alert.scheduledTime)} ${alert.medicationName}. Reply Le li once you have.`,
           })
           unscheduledMessagesToday += 1
           unscheduledMessagesByPatient.set(patient.id, unscheduledMessagesToday)
@@ -1840,8 +1840,8 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
         },
       } : item)
       const event: TimelineEvent = {
-        id: crypto.randomUUID(), patientId, type: 'note', title: 'Consent message sent',
-        description: `The WhatsApp reminders consent question was sent to ${patient.parentChannel.preferredName}. Reminders remain off until they reply YES.`,
+        id: crypto.randomUUID(), patientId, type: 'note', title: 'Simulated consent request',
+        description: `A reminders consent question was recorded for the prototype. No message was sent to ${patient.parentChannel.preferredName}.`,
         timestamp, actor: current.currentUser?.name ?? '', actorId: current.currentUser?.id ?? '', comments: [],
       }
       const timeline = [event, ...current.timeline]
@@ -1854,13 +1854,13 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
           current.members.filter(member => member.status === 'Active').map(member => member.name),
           Boolean(patient.parentChannel.aiReading),
         ).reminders,
-        text: `${current.currentUser?.name ?? 'A family member'} sent the reminders consent question. No reply yet.`,
+        text: `${current.currentUser?.name ?? 'A family member'} recorded a simulated reminders consent request. No message was sent.`,
       }
       const careEvents = [...current.careEvents, careEvent]
       commitModules(
         { patients, timeline: allPatientRecords(current, 'timeline', timeline), careEvents },
         value => ({ ...value, patients, timeline, careEvents }),
-        'Consent message sent',
+        'Simulated consent request recorded; no message sent',
       )
     },
     sendSharingConsent(patientId) {
@@ -1896,13 +1896,13 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
         actorType: 'member',
         actorId: current.currentUser?.id ?? '',
         parentText: message,
-        text: `${current.currentUser?.name ?? 'A family member'} sent the reply-sharing consent question. No reply yet.`,
+        text: `${current.currentUser?.name ?? 'A family member'} recorded a simulated reply-sharing consent request. No message was sent.`,
       }
       const careEvents = [...current.careEvents, careEvent]
       commitModules(
         { patients, careEvents },
         value => ({ ...value, patients, careEvents }),
-        'Sharing consent message sent',
+        'Simulated sharing request recorded; no message sent',
       )
     },
     simulateParentConsent(patientId, response) {
@@ -1995,18 +1995,23 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
       const careEvents = [...current.careEvents, event]
       commitModules({ tasks, careEvents }, value => ({ ...value, tasks, careEvents }), accepted ? `${actorName} accepted` : `${actorName} declined`)
     },
-    completeTask(taskId) {
+    completeTask(taskId, note) {
       const current = stateRef.current
       const task = current.tasks.find(item => item.id === taskId)
-      const canComplete = task && (current.activeCircleRole === 'coordinator' || task.assigneeId === current.currentUser?.id)
+      const canComplete = task && current.currentUser && current.activeCircleRole !== 'view-only' && (current.activeCircleRole === 'coordinator' || task.assigneeId === current.currentUser.id)
       if (!task || !canComplete || task.status === 'Completed') return
+      const update = note?.trim() ?? ''
+      if (update.length > 300) {
+        addToast('warning', 'Keep the completion update to 300 characters or fewer')
+        return
+      }
       const timestamp = now().toISOString()
       const actorName = current.currentUser?.name ?? 'A circle member'
       const updated: CareTask = { ...task, status: 'Completed', response: 'Accepted', respondedAt: task.respondedAt ?? timestamp }
       const tasks = current.tasks.map(item => item.id === taskId ? updated : item)
       const event: CareEvent = {
         id: crypto.randomUUID(), at: timestamp, kind: 'task_completed', patientId: task.patientId, taskId,
-        actorType: 'member', actorId: current.currentUser?.id ?? '', text: `${actorName} completed ${task.title}.`,
+        actorType: 'member', actorId: current.currentUser?.id ?? '', text: `${actorName} completed ${task.title}.${update ? ` Update: ${update}` : ''}`,
       }
       const careEvents = [...current.careEvents, event]
       commitModules({ tasks, careEvents }, value => ({ ...value, tasks, careEvents }), `${actorName} completed the task`)
@@ -2088,7 +2093,8 @@ export function AppProvider({ children, now: baseNow = systemNow, sample = false
       const current = stateRef.current
       const medications = current.medications.map(item => item.id === id ? { ...item, stock: item.stock + amount } : item)
       const medicineName = current.medications.find(item => item.id === id)?.name
-      const refillTasks = current.tasks.filter(task => task.patientId === current.activePatientId && task.status !== 'Completed' && (task.medicationId === id || task.title === `Refill ${medicineName}`))
+      const refillTaskIds = new Set(current.careEvents.filter(event => event.kind === 'refill_needed' && event.patientId === current.activePatientId && event.medicationId === id && event.taskId).map(event => event.taskId))
+      const refillTasks = current.tasks.filter(task => task.patientId === current.activePatientId && task.status !== 'Completed' && (refillTaskIds.has(task.id) || task.title === `Refill ${medicineName}`))
       const tasks = current.tasks.map(task => refillTasks.some(item => item.id === task.id) ? { ...task, status: 'Completed' as const, response: 'Accepted' as const } : task)
       const event: CareEvent = {
         id: crypto.randomUUID(), at: now().toISOString(), kind: 'refill_done', patientId: current.activePatientId,

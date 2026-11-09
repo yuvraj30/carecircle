@@ -63,9 +63,9 @@ export function alertSourceLabel(
     return `${member?.name ?? 'Family member'} recorded not taken ${shortTime(event.at)}`
   }
   if (event?.kind === 'reminder_sent') {
-    return `Reminder sent ${shortTime(event.at)} · No reply yet`
+    return `Simulated reminder ${shortTime(event.at)} · No reply yet`
   }
-  if (event?.kind === 'followup_sent') return `Follow-up sent ${shortTime(event.at)} · No reply yet`
+  if (event?.kind === 'followup_sent') return `Simulated follow-up ${shortTime(event.at)} · No reply yet`
   if (event?.kind === 'claimed') return event.text
   if (event?.kind === 'claim_lapsed') return 'Claim lapsed'
   if (event?.kind === 'call_unanswered') return `${event.text} · No reply yet`
@@ -83,6 +83,12 @@ export function canMemberSeeParentReplies(patient: Patient | undefined, memberId
 }
 
 export function eventTextForMember(event: CareEvent, patient: Patient | undefined, memberId: string | undefined) {
+  // The current reminder engine is a simulation, including historical events with older wording.
+  if (event.kind === 'reminder_sent' || event.kind === 'followup_sent') {
+    if (/^simulated\b/i.test(event.text)) return event.text
+    if (/^reminder sent\b/i.test(event.text)) return event.text.replace(/^reminder sent\b/i, 'Simulated reminder')
+    return `Simulated: ${event.text}`
+  }
   if (event.kind !== 'parent_replied' || canMemberSeeParentReplies(patient, memberId)) return event.text
   return `Waiting for ${patient?.parentChannel.preferredName ?? 'the parent'} to agree to share with you`
 }

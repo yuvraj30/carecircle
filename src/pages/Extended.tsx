@@ -1,3 +1,5 @@
+import '../secondary-consistency.css'
+import '../records-refresh.css'
 import { useApp } from '../context'
 import { BellIcon } from '../components/icons'
 import { Button, Card, EmptyState, PageHeader } from '../components/ui'
@@ -19,8 +21,8 @@ export function Notifications() {
       {events.map(event => {
         const patient = state.patients.find(item => item.id === event.patientId)
         const read = readIds.has(event.id)
-        return <button key={event.id} onClick={() => { actions.markNotification(event.id); if (event.patientId !== state.activePatientId) actions.switchPatient(event.patientId); actions.setView(eventTargetView(event)) }} className={`w-full flex items-start gap-4 p-5 border-b border-slate-100 text-left hover:bg-slate-50 ${read ? '' : 'bg-[#fff8e6]'}`}>
-          <BellIcon className="w-5 h-5 text-[#3f7a6a] mt-0.5" />
+        return <button key={event.id} onClick={() => { actions.markNotification(event.id); if (event.patientId !== state.activePatientId) actions.switchPatient(event.patientId); actions.setView(eventTargetView(event)) }} className={`cc-notice-row w-full flex items-start gap-4 p-5 border-b border-slate-100 text-left ${read ? '' : 'is-unread'}`}>
+          <BellIcon className="w-5 h-5 cc-secondary-link mt-0.5" />
           <span className="flex-1"><b className="text-sm text-slate-800">{eventTextForMember(event, patient, state.currentUser?.id)}</b><span className="block text-xs text-slate-400 mt-1">{new Date(event.at).toLocaleString('en-IN')}</span></span>
           <span className={read ? 'text-xs text-slate-500' : 'cc-unread'}>{read ? 'Read' : 'New'}</span>
         </button>
@@ -55,6 +57,7 @@ export function Digest() {
   return <div className="space-y-6">
     <PageHeader title={`${patient?.parentChannel.preferredName ?? 'Parent'}'s weekly digest`} subtitle={`Generated ${new Date(digestEvent.at).toLocaleString('en-IN')} · Shared with ${joinNames(recipients)}`} />
     <Card className="p-6 space-y-5">
+      <div className="cc-digest-intro"><strong>What needs attention</strong><p>{state.tasks.filter(task => task.patientId === state.activePatientId && task.status !== 'Completed').length} open tasks · {state.tasks.filter(task => task.patientId === state.activePatientId && task.status !== 'Completed' && !task.assigneeId).length} without an owner</p><Button variant="secondary" onClick={() => actions.setView('tasks')}>Review open tasks</Button></div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <DigestStat label="Reminders sent" value={digest.remindersSent} />
         <DigestStat label={`Replies from ${patient?.parentChannel.preferredName ?? 'parent'}`} value={digest.replies} detail={`${digest.takenReplies} recorded as “taken”`} />

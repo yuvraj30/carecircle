@@ -23,7 +23,7 @@ function fmtDate(iso: string) {
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
+    <div className="flex items-start justify-between gap-4 py-3" style={{ borderBottom: '1px solid #E2ECE3' }}>
       <span className="text-sm text-slate-500 flex-shrink-0 w-36">{label}</span>
       <span className="text-sm font-medium text-slate-800 text-right">{children}</span>
     </div>
@@ -112,7 +112,7 @@ export function AlertDetailModal() {
         {/* Header strip */}
         <div
           className="px-5 pt-5 pb-4"
-          style={{ borderBottom: '1px solid #F1F5F9', background: 'linear-gradient(135deg, #F8FAFC 0%, #F0F7FF 100%)' }}
+          style={{ borderBottom: '1px solid #E2ECE3', background: 'linear-gradient(135deg, #EAF4EB 0%, #F8F8F0 100%)' }}
         >
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -219,8 +219,8 @@ export function AlertDetailModal() {
                     <select
                       value={assignTo}
                       onChange={e => setAssignTo(e.target.value)}
-                      className="w-full appearance-none text-sm px-3 py-2.5 pr-8 rounded-xl border text-slate-700 bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#4A7FA5]"
-                      style={{ borderColor: assignTo ? '#4A7FA5' : '#E2E8F0' }}
+                      className="w-full appearance-none text-sm px-3 py-2.5 pr-8 rounded-xl border text-slate-700 bg-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#2B6B50]"
+                      style={{ borderColor: assignTo ? '#2B6B50' : '#E2E8F0' }}
                       aria-label="Select family member to assign"
                     >
                       <option value="">Select family member…</option>
@@ -234,7 +234,7 @@ export function AlertDetailModal() {
                     onClick={handleAssign}
                     disabled={!assignTo}
                     className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: '#4A7FA5' }}
+                    style={{ backgroundColor: '#2B6B50' }}
                   >
                     Assign
                   </button>

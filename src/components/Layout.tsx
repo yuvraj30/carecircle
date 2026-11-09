@@ -52,7 +52,7 @@ export function Layout({ children }: { children: ReactNode }) {
         style={{ backgroundColor: '#FFFEFB', borderRight: '1px solid #E3E8E0' }}
       >
         {/* Brand */}
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid #E3E8E0' }}>
+        <div className="cc-shell-brand px-5 py-4" style={{ borderBottom: '1px solid #E3E8E0' }}>
           <div className="flex items-center gap-2.5">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#DEEDE7' }}>
               <HeartIcon className="w-6 h-6 text-[#346B63]" />
@@ -78,7 +78,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
 
         {/* ── Patient switcher ── */}
-        <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid #E3E8E0' }}>
+        <div className="cc-shell-patients px-4 pt-4 pb-3" style={{ borderBottom: '1px solid #E3E8E0' }}>
           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5 px-1">Caring for</p>
           <div className="space-y-1.5">
             {patients.filter(patient => !patient.archived).map(patient => {
@@ -124,7 +124,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 mt-3 space-y-0.5 overflow-y-auto min-h-0" aria-label="Main navigation">
+        <nav className="cc-shell-navigation flex-1 px-3 mt-3 space-y-0.5 overflow-y-auto min-h-0" aria-label="Main navigation">
           {visibleGroups.map(group => {
             const active = group.views.includes(view)
             const Icon = group.Icon
@@ -135,7 +135,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </nav>
 
         {/* Bottom */}
-        <div className="px-3 pb-4 space-y-1" style={{ borderTop: '1px solid #E3E8E0', paddingTop: '12px' }}>
+        <div className="cc-shell-footer px-3 pb-4 space-y-1" style={{ borderTop: '1px solid #E3E8E0', paddingTop: '12px' }}>
           <button
             onClick={actions.resetDemo}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
@@ -171,7 +171,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Mobile top bar ── */}
       <header
-        className="lg:hidden fixed top-0 left-0 right-0 z-20 flex items-center px-4 h-14"
+        className="cc-shell-mobile-header lg:hidden fixed top-0 left-0 right-0 z-20 flex items-center px-4 h-14"
         style={{ backgroundColor: '#FFFEFB', borderBottom: '1px solid #E3E8E0' }}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -181,7 +181,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <span className="font-semibold text-slate-800 text-sm flex-shrink-0">CareCircle</span>
           {/* Mobile patient switcher */}
           <div className="flex gap-1.5 ml-2 overflow-x-auto">
-            {patients.map(p => {
+            {patients.filter(p => !p.archived).map(p => {
               const isActive = p.id === activePatientId
               return (
                 <button
@@ -220,7 +220,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Main content ── */}
       <main className="flex-1 lg:ml-64 pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen min-w-0">
-        <header className="hidden lg:flex h-16 items-center justify-between px-8 xl:px-10 bg-white border-b border-slate-200/80 sticky top-0 z-10">
+        <header className="cc-shell-topbar hidden lg:flex h-16 items-center justify-between px-8 xl:px-10 bg-white border-b border-slate-200/80 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
@@ -251,6 +251,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <div className="w-full max-w-[1440px] mx-auto px-4 py-6 lg:px-8 xl:px-10 lg:py-8">
+          <div className="cc-prototype-note" role="note"><strong>Prototype:</strong> WhatsApp messages are simulated. Reminders advance only while the app is open; do not rely on this for real care.</div>
           {state.commitError && <div className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert"><span><b>Not saved</b> — {state.commitError.message}</span><Button variant="secondary" disabled={retryingCommit} onClick={retryCommit}>{retryingCommit ? 'Retrying…' : 'Retry'}</Button></div>}
           {mobileGroup && mobileGroup.views.length > 1 && <nav className="cc-subtabs lg:hidden" aria-label="Section">{mobileGroup.views.map(target => <button key={target} type="button" onClick={() => openView(target)} aria-current={view === target ? 'page' : undefined}>{VIEW_LABELS[target]}</button>)}</nav>}
           {children}
@@ -259,7 +260,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* ── Mobile bottom nav ── */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-20 flex overflow-x-auto"
+        className="cc-shell-mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-20 flex overflow-x-auto"
         style={{ backgroundColor: '#FFFEFB', borderTop: '1px solid #E3E8E0' }}
         aria-label="Mobile navigation"
       >

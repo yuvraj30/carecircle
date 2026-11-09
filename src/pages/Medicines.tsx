@@ -1,3 +1,4 @@
+import '../medicines-refresh.css'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useApp } from '../context'
@@ -37,6 +38,10 @@ function photoNeedsReview(med: Medication, events: ReturnType<typeof useApp>['st
 function MedicineDetail({ med, onClose, onEdit }: { med: Medication; onClose: () => void; onEdit: () => void }) {
   const { state, actions, now } = useApp()
   const gate = useGate()
+  const [refillAmount, setRefillAmount] = useState('')
+  const [showRefill, setShowRefill] = useState(false)
+  const refillUnits = Number(refillAmount)
+  const validRefill = Number.isSafeInteger(refillUnits) && refillUnits > 0
   const today = now().toLocaleDateString('en-CA')
   const todayAlerts = state.alerts.filter(a => a.medicationId === med.id && a.scheduledDate === today)
   const todayAlert = todayAlerts[0]
@@ -143,6 +148,7 @@ function MedicineDetail({ med, onClose, onEdit }: { med: Medication; onClose: ()
             </div>
           ))}
 
+          <div className="cc-stock-guide"><strong>Supply on record: {med.stock}</strong><p>Refill threshold: {med.refillThreshold}. This is the last recorded count, not a live inventory. Check the actual supply before arranging a refill.</p><div className="flex flex-wrap gap-2"><Button variant="secondary" disabled={state.activeCircleRole === 'view-only'} onClick={() => gate.requireAccount(onEdit, 'edit-medicine')}>Review stock</Button><Button variant="secondary" disabled={state.activeCircleRole === 'view-only'} onClick={() => setShowRefill(value => !value)}>{showRefill ? 'Cancel refill' : 'Record refill'}</Button></div>{showRefill && <div className="mt-4 space-y-3"><Field label="Units added" type="number" min="1" step="1" inputMode="numeric" value={refillAmount} onChange={event => setRefillAmount(event.target.value)} hint="Recording a refill completes this medicine’s open refill tasks." /><Button disabled={!validRefill || state.activeCircleRole === 'view-only'} onClick={() => gate.requireAccount(() => { actions.replenishMedication(med.id, refillUnits); setRefillAmount(''); setShowRefill(false) }, 'edit-medicine')}>Add to recorded supply</Button></div>}</div>
           {/* Notes */}
           <div className="pt-2">
             <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2">Notes &amp; Instructions</p>
@@ -156,7 +162,7 @@ function MedicineDetail({ med, onClose, onEdit }: { med: Medication; onClose: ()
           </div>
           <div className="grid grid-cols-2 gap-2 pt-2">
             <Button variant="secondary" disabled={state.activeCircleRole === 'view-only'} onClick={() => gate.requireAccount(onEdit, 'edit-medicine')}>Edit medicine</Button>
-            <Button variant="secondary" disabled={state.activeCircleRole === 'view-only'} onClick={() => gate.requireAccount(() => actions.replenishMedication(med.id, 30), 'edit-medicine')}>Replenish +30</Button>
+            <Button variant="secondary" disabled={state.activeCircleRole === 'view-only'} onClick={() => { onClose(); actions.setView('tasks') }}>Review refill tasks</Button>
             {(med.status ?? 'Active') === 'Active' && <Button variant="secondary" className="col-span-2" disabled={state.activeCircleRole === 'view-only'} onClick={() => gate.requireAccount(() => actions.stopMedication(med.id), 'edit-medicine')}>Stop this medicine</Button>}
           </div>
         </div>
@@ -182,12 +188,12 @@ export function Medicines() {
   useEffect(() => {
     if (searchParams.get('action') === 'add-medicine') setAdding(true)
   }, [searchParams])
-  const careTeam = [...new Set(medications.map(m => m.prescribingDoctor))].map((name, index) => {
+  const careTeam = [...new Set(medications.map(m => m.prescribingDoctor).filter(Boolean))].map((name, index) => {
     const related = medications.filter(m => m.prescribingDoctor === name)
     const initials = name.replace('Dr. ', '').split(' ').map(part => part[0]).join('').slice(0, 2)
     return {
       name,
-      role: related.some(m => m.condition.includes('Coronary') || m.condition.includes('Cholesterol') || m.condition.includes('Hypertension')) ? 'Cardiologist' : related.some(m => m.condition.includes('Diabetes')) ? 'Endocrinologist' : 'Physician',
+      role: 'Prescriber',
       for: related.map(m => m.condition).join(' · '),
       initials,
       color: index % 2 === 0 ? '#A8C4AB' : '#C8BAE0',
@@ -198,50 +204,22 @@ export function Medicines() {
     <div className="space-y-6">
       <PageHeader title="Medicines" subtitle={`${activePatient?.name}'s current medication regimen`} action={<Button disabled={state.activeCircleRole === 'view-only'} onClick={() => gate.requireAccount(() => setAdding(true), 'add-medicine')}><PlusIcon className="w-4 h-4 inline mr-2" />Add medicine</Button>} />
 
-      <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-3">
+      <section className="med-overview" aria-label="Medicine overview"><div><span className="med-kicker">THE CARE PLAN</span><h2>A little more peace of mind.</h2><p>Everything in one place, ready when your family needs it.</p></div><div className="med-overview-stats"><div><strong>{medications.filter(med => med.status !== 'Stopped').length}</strong><span>active medicines</span></div><div><strong>{medications.filter(med => med.status !== 'Stopped' && med.stock <= med.refillThreshold).length}</strong><span>need stock review</span></div></div></section>
+      <section className="med-list"><div className="med-list-head"><div><span className="med-kicker">THE MEDICINE CABINET</span><h2>Medicines at a glance</h2></div><span>{medications.length} {medications.length === 1 ? 'medicine' : 'medicines'}</span></div>
+      {medications.length === 0 ? <div className="med-empty"><strong>No medicines recorded yet.</strong><p>Add a medicine to start the care plan.</p></div> : <div className="med-grid">
         {medications.map(med => {
           const todayAlert = state.alerts.find(a => a.medicationId === med.id && a.scheduledDate === today)
           const photo = med.photos?.[0]
           const needsPhotoReview = photoNeedsReview(med, state.careEvents)
-          return (
-            <button
-              key={med.id}
-              onClick={() => actions.openMedicineDetail(med.id)}
-              className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all text-left border border-transparent hover:border-slate-100 group"
-              aria-label={`${med.name} ${med.dose} — ${med.condition}`}
-            >
-              {photo ? <div className="w-24 flex-shrink-0"><MedicinePhoto photo={photo} alt={`${med.name} saved medicine photo`} className="w-24 h-20 rounded-xl" /><p className="text-[10px] text-slate-500 leading-snug mt-1">{photoSavedLabel(med)}</p></div> : <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: med.accentColor }}><svg className="w-5 h-5" fill="none" stroke="#2C3A47" viewBox="0 0 24 24" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg></div>}
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-slate-800 text-sm">{med.name} <span className="text-slate-500 font-medium">{med.dose}</span></p>
-                </div>
-                <p className="text-xs text-slate-500 mt-0.5">{med.frequency}</p>
-                {needsPhotoReview && <p className="text-[10px] text-amber-700 mt-1">Dose changed after this photo was saved. Check it still matches.</p>}
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span
-                    className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                    style={{ backgroundColor: `${med.accentColor}60`, color: '#2C3A47' }}
-                  >
-                    {med.condition}
-                  </span>
-                  {todayAlert && <AlertSourceStatus alert={todayAlert} />}
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${med.stock <= med.refillThreshold ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>{med.stock <= med.refillThreshold ? `Refill soon · ${med.stock} left` : `Stock ${med.stock}`}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <UserIcon className="w-3.5 h-3.5 text-slate-300" />
-                <span className="text-xs text-slate-400 hidden sm:block">{med.prescribingDoctor.replace('Dr. ', '')}</span>
-                <svg className="w-4 h-4 text-slate-300 group-hover:text-slate-400 transition-colors ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                </svg>
-              </div>
-            </button>
-          )
+          const low = med.stock <= med.refillThreshold
+          return <button key={med.id} onClick={() => actions.openMedicineDetail(med.id)} className="med-card" aria-label={`${med.name} ${med.dose} — ${med.condition}`}>
+            <div className="med-card-top">{photo ? <MedicinePhoto photo={photo} alt="" className="med-card-photo" /> : <span className="med-card-icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg></span>}<span className={'med-stock' + (low ? ' med-stock-low' : '')}>{med.status === 'Stopped' ? 'Stopped' : low ? 'Stock review' : 'In plan'}</span></div>
+            <div className="med-card-title"><span>MEDICINE</span><h3>{med.name}</h3><p>{med.dose} <span>·</span> {med.frequency}</p></div>
+            <div className="med-card-status">{todayAlert ? <AlertSourceStatus alert={todayAlert} /> : <span>{med.condition || 'No condition recorded'}</span>}{needsPhotoReview && <p>Check that the saved photo still matches the dose.</p>}</div>
+            <div className="med-card-footer"><div><span>SUPPLY ON RECORD</span><strong>{med.stock} {med.stock === 1 ? 'unit' : 'units'}</strong></div><span className="med-card-link">View details <b aria-hidden="true">↗</b></span></div>
+          </button>
         })}
-      </div>
-
+      </div>}</section>
       {earlierUnresolved.length > 0 && <section aria-labelledby="earlier-alerts-heading"><h2 id="earlier-alerts-heading" className="font-semibold text-slate-700 text-sm mb-3">Earlier</h2><div className="bg-white rounded-2xl shadow-sm divide-y divide-slate-100">{earlierUnresolved.map(alert => <button key={alert.id} onClick={() => actions.openAlertDetail(alert.id)} className="w-full flex items-center justify-between gap-4 px-5 py-3 text-left"><span><span className="text-sm font-semibold text-slate-700">{alert.medicationName}</span><span className="text-xs text-slate-500 ml-2">{new Date(`${alert.scheduledDate}T${alert.scheduledTime}:00`).toLocaleString('en-IN')}</span></span><AlertSourceStatus alert={alert} /></button>)}</div></section>}
 
       {/* Prescribing doctors info */}
@@ -335,8 +313,8 @@ function MedicineForm({ initial, onClose, onSave }: { initial?: Medication; onCl
     set('name', row.name)
     set('dose', row.dose)
     set('frequency', row.frequency)
-    set('scheduleTime', row.scheduleTime)
+    set('scheduleTime', '')
     if (row.notes) set('notes', row.notes)
   }
-  return <Dialog title={initial ? 'Edit medicine' : 'Add medicine'} onClose={onClose} wide>{!initial && <div className="mb-4 rounded-xl bg-slate-50 p-3"><TextAreaField label="Paste a prescription or medicine list" value={paste} onChange={event => setPaste(event.target.value)} /><p className="text-xs text-slate-500 mt-2">Reading only fills the form. Nothing is saved until you press Save. Check every dose against the label.</p><Button variant="secondary" className="mt-3" disabled={!paste.trim() || reading} onClick={readPaste}>{reading ? 'Reading…' : 'Read it'}</Button>{parsed.map((row, index) => <div key={index} className="flex items-center justify-between gap-3 mt-3 text-sm"><span>{row.name} {row.dose} · {row.frequency} · {clockLabel(row.scheduleTime)}</span><Button variant="ghost" onClick={() => fillFrom(row)}>Use this</Button></div>)}</div>}<div className="grid sm:grid-cols-2 gap-4"><Field label="Medicine name" value={form.name} onChange={e => set('name', e.target.value)} /><Field label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} /><Field label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} /><Field label="Schedule time" type="time" value={form.scheduleTime} onChange={e => set('scheduleTime', e.target.value)} /><SelectField label="Status" value={form.status ?? 'Active'} onChange={e => set('status', e.target.value as Medication['status'])}><option>Active</option><option>Stopped</option></SelectField><Field label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /><Field label="End date" type="date" value={form.endDate ?? ''} onChange={e => set('endDate', e.target.value)} /><Field label="Prescriber" value={form.prescribingDoctor} onChange={e => set('prescribingDoctor', e.target.value)} /><Field label="Condition" value={form.condition} onChange={e => set('condition', e.target.value)} /><Field label="Current stock" type="number" value={form.stock} onChange={e => set('stock', Number(e.target.value))} /><Field label="Refill threshold" type="number" value={form.refillThreshold} onChange={e => set('refillThreshold', Number(e.target.value))} /><div className="sm:col-span-2"><Field label="Appearance" value={form.appearance ?? ''} placeholder="Small white round tablet, blister strip" onChange={e => set('appearance', e.target.value)} /></div><div className="sm:col-span-2"><Field label="Upload a private medicine photo" type="file" disabled={state.isSample} accept="image/jpeg,image/png,image/webp" onChange={event => chooseFile(event.target.files?.[0])} hint={state.isSample ? 'Photo upload is disabled in Sample.' : undefined} /><p className="text-xs text-slate-400 mt-2">Or use a built-in sample:</p><div className="grid grid-cols-3 gap-2 mt-2">{BUILT_IN_MEDICINE_PHOTOS.map(sample => <Button type="button" variant="secondary" className="h-auto p-2 flex-col" key={sample.id} onClick={() => chooseSample(sample.id)}><img src={sample.dataUrl} alt="" className="w-full h-20 rounded-lg object-cover mb-2" /><span className="text-xs">{sample.label}</span></Button>)}</div>{form.photos?.[0] && <p className="text-xs text-emerald-700 mt-2">{photoSavedLabel(form)}</p>}{error && <p className="text-sm text-rose-700 bg-rose-50 rounded-xl p-3 mt-2">{error}</p>}</div><div className="sm:col-span-2"><TextAreaField label="Instructions" value={form.notes} onChange={e => set('notes', e.target.value)} /></div></div><div className="flex justify-end gap-2 mt-6"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={!form.name || !form.dose || !form.scheduleTime || saving} onClick={save}>{saving ? 'Saving securely…' : 'Save medicine & schedule'}</Button></div></Dialog>
+  return <Dialog title={initial ? 'Edit medicine' : 'Add medicine'} onClose={onClose} wide>{!initial && <div className="mb-4 rounded-xl bg-slate-50 p-3"><TextAreaField label="Paste a prescription or medicine list" value={paste} onChange={event => setPaste(event.target.value)} /><p className="text-xs text-slate-500 mt-2">Reading suggests values and may infer times. Check every medicine, dose and frequency against the original instructions. Enter the schedule time yourself before saving. In your circle, the text may be sent to an external AI service.</p><Button variant="secondary" className="mt-3" disabled={!paste.trim() || reading} onClick={readPaste}>{reading ? 'Reading…' : 'Read it'}</Button>{parsed.map((row, index) => <div key={index} className="flex items-center justify-between gap-3 mt-3 text-sm"><span>{row.name} {row.dose} · {row.frequency} · Enter time after review</span><Button variant="ghost" onClick={() => fillFrom(row)}>Use this</Button></div>)}</div>}<div className="grid sm:grid-cols-2 gap-4"><Field label="Medicine name" value={form.name} onChange={e => set('name', e.target.value)} /><Field label="Dose" value={form.dose} onChange={e => set('dose', e.target.value)} /><Field label="Frequency" value={form.frequency} onChange={e => set('frequency', e.target.value)} /><Field label="Schedule time" type="time" value={form.scheduleTime} onChange={e => set('scheduleTime', e.target.value)} /><SelectField label="Status" value={form.status ?? 'Active'} onChange={e => set('status', e.target.value as Medication['status'])}><option>Active</option><option>Stopped</option></SelectField><Field label="Start date" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} /><Field label="End date" type="date" value={form.endDate ?? ''} onChange={e => set('endDate', e.target.value)} /><Field label="Prescriber" value={form.prescribingDoctor} onChange={e => set('prescribingDoctor', e.target.value)} /><Field label="Condition" value={form.condition} onChange={e => set('condition', e.target.value)} /><Field label="Current stock" type="number" value={form.stock} onChange={e => set('stock', Number(e.target.value))} /><Field label="Refill threshold" type="number" value={form.refillThreshold} onChange={e => set('refillThreshold', Number(e.target.value))} /><div className="sm:col-span-2"><Field label="Appearance" value={form.appearance ?? ''} placeholder="Small white round tablet, blister strip" onChange={e => set('appearance', e.target.value)} /></div><div className="sm:col-span-2"><Field label="Upload a private medicine photo" type="file" disabled={state.isSample} accept="image/jpeg,image/png,image/webp" onChange={event => chooseFile(event.target.files?.[0])} hint={state.isSample ? 'Photo upload is disabled in Sample.' : undefined} /><p className="text-xs text-slate-400 mt-2">Or use a built-in sample:</p><div className="grid grid-cols-3 gap-2 mt-2">{BUILT_IN_MEDICINE_PHOTOS.map(sample => <Button type="button" variant="secondary" className="h-auto p-2 flex-col" key={sample.id} onClick={() => chooseSample(sample.id)}><img src={sample.dataUrl} alt="" className="w-full h-20 rounded-lg object-cover mb-2" /><span className="text-xs">{sample.label}</span></Button>)}</div>{form.photos?.[0] && <p className="text-xs text-emerald-700 mt-2">{photoSavedLabel(form)}</p>}{error && <p className="text-sm text-rose-700 bg-rose-50 rounded-xl p-3 mt-2">{error}</p>}</div><div className="sm:col-span-2"><TextAreaField label="Instructions" value={form.notes} onChange={e => set('notes', e.target.value)} /></div></div><div className="flex justify-end gap-2 mt-6"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={!form.name || !form.dose || !form.scheduleTime || saving} onClick={save}>{saving ? 'Saving securely…' : 'Save medicine & schedule'}</Button></div></Dialog>
 }

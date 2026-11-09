@@ -1,0 +1,10 @@
+/* Shared visual tokens for the CareCircle interface */
+:root { --cc-ink:#244a3b; --cc-muted:#617b6d; --cc-brand:#245f49; --cc-brand-hover:#194a39; --cc-soft:#e8f2e9; --cc-canvas:#f5f5f0; --cc-surface:#fffefa; --cc-border:#dfe9df; --cc-focus:#aa772d; }
+.cc-btn-primary { background:var(--cc-brand); color:white; }.cc-btn-primary:hover:not(:disabled) { background:var(--cc-brand-hover); }
+.cc-btn-secondary { border-color:var(--cc-border); color:var(--cc-ink); background:var(--cc-surface); }.cc-btn-secondary:hover:not(:disabled) { background:var(--cc-soft); }
+.cc-btn-ghost { color:var(--cc-muted); }.cc-btn-ghost:hover:not(:disabled) { background:var(--cc-soft); }
+.cc-btn:focus-visible, .cc-page-header button:focus-visible { outline:3px solid var(--cc-focus); outline-offset:3px; }
+.cc-page-header h1, .cc-work-hero h1, .ccv-hero h1 { font-family:'Bricolage Grotesque','Figtree',sans-serif; letter-spacing:-.045em; }
+.cc-card,.cc-surface { color:var(--cc-ink); }
+.cc-dialog-panel input:not([type=checkbox]):not([type=radio]):focus-visible, .cc-dialog-panel textarea:focus-visible, .cc-dialog-panel select:focus-visible { outline:2px solid #72a786; outline-offset:2px; }
+@media(prefers-reduced-motion:reduce) { .cc-btn { transition:none; } }
